@@ -41,6 +41,9 @@
   .app-shell #report-platforms .zm-donut-layout { grid-template-columns: .8fr 1.2fr; padding-block: 16px 8px; gap: 40px; }
   .app-shell #report-platforms .zm-donut-legend { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
   .app-shell #report-platforms .zm-donut-selection { grid-column: 1 / -1; min-height: 16px; margin-block: 3px; }
+  .app-shell #report-platforms .zm-donut-layout:has(.zm-platform-legend-button:nth-child(3)) { grid-template-columns: minmax(180px,.7fr) minmax(0,2fr); gap: 26px; }
+  .app-shell #report-platforms .zm-donut-legend:has(> .zm-platform-legend-button:nth-child(3)) { grid-template-columns: repeat(3,minmax(0,1fr)); }
+  .app-shell #report-platforms .zm-donut-legend:has(> .zm-platform-legend-button:nth-child(3)) .zm-platform-metrics { grid-template-columns: 1fr; gap: 6px; }
   .app-shell #report-platforms .zm-donut-plot { max-width: min(260px,30vh); }
   .app-shell #report-platforms .platform-time-stories { margin-top: 8px; padding-top: 12px; gap: 20px; }
   .app-shell #report-platforms .time-perspective-story { margin-block: 7px; }
