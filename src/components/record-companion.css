@@ -1,0 +1,64 @@
+.record-companion {
+  --rc-line: #acb398;
+  --rc-orange: #ce8d62;
+  position: relative;
+  width: 100%;
+  max-width: 580px;
+  justify-self: center;
+  align-self: center;
+  min-width: 0;
+}
+.record-companion-art { display: block; width: 100%; height: auto; max-height: 500px; overflow: visible; stroke-linecap: round; stroke-linejoin: round; }
+.rc-floor { fill: #c4b696; opacity: .065; }
+.rc-sway { transform-origin: 245px 437px; animation: rc-listener-sway 4.8s ease-in-out 1; }
+.rc-trouser { fill: #222b21; stroke: var(--rc-line); stroke-width: 1.6; }
+.rc-seam { fill: none; stroke: var(--rc-line); stroke-width: 1; opacity: .4; }
+.rc-shoe { fill: #b4ba9f; stroke: #d0d2b9; stroke-width: 1.2; }
+.rc-shirt { fill: #303a2d; stroke: var(--rc-line); stroke-width: 1.7; }
+.rc-neck, .rc-head { fill: #caba9b; stroke: #dfc8a4; stroke-width: 1.3; }
+.rc-hair { fill: #1a231b; stroke: #9aab8e; stroke-width: 1.1; }
+.rc-face { fill: none; stroke: #39402e; stroke-width: 2; }
+.rc-arm-back, .rc-arm-front { fill: none; stroke: var(--rc-line); stroke-width: 8; }
+.rc-arm-back { stroke: #88957e; }
+.rc-arm-front { stroke-width: 9; }
+.rc-headband { fill: none; stroke: var(--rc-orange); stroke-width: 3.8; }
+.rc-headphone { fill: var(--rc-orange); stroke: #e3ac80; stroke-width: 1.1; }
+.rc-headphone-back { fill: #9e6c4d; stroke: var(--rc-orange); stroke-width: 1; }
+.rc-headphone-detail { fill: none; stroke: #4d4735; stroke-width: 1.2; opacity: .5; }
+.rc-disc { filter: drop-shadow(6px 12px 9px #0004); }
+.rc-groove { fill: none; stroke: #bdc5ab; stroke-width: .55; opacity: .16; }
+.rc-disc-turn { transform-origin: 325px 254px; animation: rc-grooves-turn 4.8s linear 1 both; }
+.rc-fine-glint { fill: none; stroke: #d3d4bb; stroke-width: 1; opacity: .3; }
+.rc-label { fill: #b34c43; }
+.rc-label-rule { fill: none; stroke: #563c2e; stroke-width: .6; opacity: .27; }
+.rc-brand-z { fill: #f1ddba; }
+.rc-hand { fill: #caba9b; stroke: #dfc8a4; stroke-width: 1.1; }
+.rc-hand-detail { fill: none; stroke: #83765d; stroke-width: 1; }
+.record-companion-control {
+  position: absolute;
+  right: 4%;
+  bottom: 4%;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid #aab39730;
+  border-radius: 50%;
+  color: #b9bda7;
+  background: transparent;
+  cursor: pointer;
+}
+.record-companion-control:hover { border-color: #caba9b99; color: #eee5d2; }
+.record-companion-control:focus-visible { outline: 2px solid var(--rc-orange); outline-offset: 4px; }
+.record-companion.is-paused .rc-sway, .record-companion.is-paused .rc-disc-turn { animation-play-state: paused; }
+/* Keep the monogram upright: only the grooves rotate; the listener shifts gently. */
+@keyframes rc-listener-sway { 0%,100% { transform: translate(0,0); } 30% { transform: translate(-3px,-1px); } 70% { transform: translate(3px,1px); } }
+@keyframes rc-grooves-turn { from { transform: rotate(0); } to { transform: rotate(65deg); } }
+@media (max-width: 700px) {
+  .record-companion { max-width: 400px; margin: 12px auto 0; }
+  .record-companion-art { max-height: 435px; }
+  .record-companion-control { right: 0; bottom: 3%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .record-companion .rc-sway, .record-companion .rc-disc-turn { animation: none; }
+}

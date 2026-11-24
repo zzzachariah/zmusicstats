@@ -1,4 +1,10 @@
 // This bridge speaks to configured gateways. It never stores music credentials in the browser.
+import { publicAccount } from "./account.mjs";
+import { neteaseMonthReadiness, neteasePeriodMatches, neteaseTopSongFallback, neteaseHistoryDirectory, neteaseMonthSeconds } from "./netease-report.mjs";
+import { appleDeveloperTokenUsable, createAppleDeveloperTokenProvider } from "./apple-developer.mjs";
+import { createMusicMetadata, qqArtworkUrl, safeArtworkUrl, songDurationSeconds } from "./music-metadata.mjs";
+import { qqMobileAuth } from "./qq-mobile-auth.mjs";
+export { appleDeveloperTokenUsable } from "./apple-developer.mjs";
 export class ApiError extends Error {
   constructor(status, code, message) {
     super(message);
@@ -22,6 +28,15 @@ export function monthPeriod(month) {
 
 export function closedMonth(period, now = Date.now()) {
   return Date.parse(`${period.end}T23:59:59.999+08:00`) < now;
+}
+
+function qqDirectoryMonths(payload) {
+  if (!Array.isArray(payload?.availableDates) || payload.availableDates.length === 0)
+    throw new ApiError(502, "HISTORY_DIRECTORY_UNAVAILABLE", "QQ 音乐暂未返回可读取月份目录，请稍后重试。");
+  if (payload.range !== "month" || payload.availableDates.some(value =>
+    typeof value !== "string" || !/^20\d{2}(0[1-9]|1[0-2])$/.test(value)))
+    throw new ApiError(502, "HISTORY_DIRECTORY_INVALID", "QQ 音乐返回的历史月份目录格式无法确认，请稍后重试。");
+  return [...new Set(payload.availableDates.map(value => `${value.slice(0, 4)}-${value.slice(4)}`))].sort();
 }
 
 function finiteCount(value) {
@@ -58,6 +73,7 @@ export function parseNeteaseRanks(payload) {
       title: text(item.songName),
       artist: people(item.artists),
       album: text(item.albumName),
+      ...(safeArtworkUrl(item.albumPicUrl ?? item.picUrl) ? { artworkUrl: safeArtworkUrl(item.albumPicUrl ?? item.picUrl) } : {}),
       count: finiteCount(item.playCount),
       genres: [],
     }))
@@ -80,39 +96,13 @@ export function parseQqRanks(payload) {
         title: text(track.name ?? track.title ?? track.songname),
         artist: people(track.singer ?? track.singers),
         album: text(track.album?.name ?? track.albumname),
+        ...(songDurationSeconds(track.interval) ? { durationSeconds: songDurationSeconds(track.interval) } : {}),
+        ...(qqArtworkUrl(track.album?.mid ?? track.albummid) ? { artworkUrl: qqArtworkUrl(track.album?.mid ?? track.albummid) } : {}),
         count: finiteCount(item.listenCount),
         genres: [],
       };
     })
     .filter((item) => item.id && item.title);
-}
-
-export function appleDeveloperTokenUsable(token, now = Date.now()) {
-  if (
-    typeof token !== "string" ||
-    token.length > 16_384 ||
-    !/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(token)
-  )
-    return false;
-  try {
-    const [encodedHeader, encodedPayload] = token.split(".");
-    const header = JSON.parse(
-      Buffer.from(encodedHeader, "base64url").toString(),
-    );
-    const claims = JSON.parse(
-      Buffer.from(encodedPayload, "base64url").toString(),
-    );
-    // This is an expiry/shape check, not signature verification. Apple verifies the token below.
-    return (
-      header.alg === "ES256" &&
-      typeof header.kid === "string" &&
-      typeof claims.iss === "string" &&
-      Number.isFinite(claims.exp) &&
-      claims.exp * 1000 > now + 60_000
-    );
-  } catch {
-    return false;
-  }
 }
 
 export function parseAppleRecentTracks(payload) {
@@ -132,6 +122,8 @@ export function parseAppleRecentTracks(payload) {
         title: text(attributes.name),
         artist: text(attributes.artistName),
         album: text(attributes.albumName),
+        ...(songDurationSeconds(attributes.durationInMillis / 1000) ? { durationSeconds: songDurationSeconds(attributes.durationInMillis / 1000) } : {}),
+        ...(safeArtworkUrl(attributes.artwork?.url) ? { artworkUrl: safeArtworkUrl(attributes.artwork?.url) } : {}),
         count: null,
         genres: Array.isArray(attributes.genreNames)
           ? attributes.genreNames
@@ -205,7 +197,10 @@ export function createAdapters(config, fetchImpl = fetch) {
     config.qqOfficialBase ?? "https://a.y.qq.com",
   );
   const appleBase = "https://api.music.apple.com";
+  const appleDeveloper = createAppleDeveloperTokenProvider(config);
   let appleConfigVerifiedUntil = 0;
+  let appleConfigVerifiedToken = null;
+  const qqAvailableMonths = new WeakMap();
 
   async function request(
     base,
@@ -216,6 +211,8 @@ export function createAdapters(config, fetchImpl = fetch) {
       params = {},
       allowQr = false,
       allowEmpty = false,
+      timeoutMs = config.timeoutMs ?? 12_000,
+      signal,
     } = {},
   ) {
     if (!base)
@@ -238,7 +235,7 @@ export function createAdapters(config, fetchImpl = fetch) {
           ...headers,
         },
         body: body ? JSON.stringify(body) : undefined,
-        signal: AbortSignal.timeout(config.timeoutMs ?? 12_000),
+        signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(timeoutMs)]) : AbortSignal.timeout(timeoutMs),
       });
     } catch (error) {
       if (error?.name === "TimeoutError" || error?.name === "AbortError")
@@ -308,25 +305,43 @@ export function createAdapters(config, fetchImpl = fetch) {
     return payload;
   }
 
-  const ncm = (path, params = {}, cookie) =>
+  const ncm = (path, params = {}, cookie, options = {}) =>
     request(ncmBase, path, {
+      ...options,
       // Credentials stay in the HTTPS body, never in an URL or application log.
-      body: { ...params, ...(cookie ? { cookie } : {}), timestamp: Date.now() },
+      body: { ...params, ...(cookie ? { cookie } : {}), timestamp: Date.now(),
+        // A disconnected bridge request does not abort the gateway's Axios request.
+        // Bound upstream work too, slightly before our own deadline.
+        timeout: Math.max(1, (options.timeoutMs ?? config.timeoutMs ?? 12_000) - 750) },
+      // The gateway's cache key ignores POST bodies. Bypass it for every account-scoped
+      // request, including QR polling, so neither stale auth states nor other users' data leak.
+      headers: { "x-apicache-bypass": "1", "Cache-Control": "no-store" },
       allowQr: path.startsWith("/login/qr/"),
     });
-  const qq = (path, params = {}, token) =>
+  const qq = (path, params = {}, token, options = {}) =>
     request(qqBase, path, {
+      ...options,
       params,
       headers: token ? { "X-QQ-Session": token } : {},
       allowQr: path.startsWith("/login/qr/"),
     });
+  const ncmReport = async (path, params, cookie, options = {}) => {
+    const attempts = options.attempts ?? 2;
+    for (let attempt = 0; attempt < attempts; attempt++) {
+      try { return await ncm(path, params, cookie, { signal: options.signal, timeoutMs: options.timeoutMs ?? config.neteaseReportTimeoutMs ?? 40_000 }); }
+      catch (error) {
+        if (options.signal?.aborted || attempt >= attempts - 1 || !["UPSTREAM_TIMEOUT", "UPSTREAM_UNAVAILABLE"].includes(error?.code)) throw error;
+        await new Promise(resolve => setTimeout(resolve, 250));
+      }
+    }
+  };
   const qqOfficial = (apiKey) =>
     request(officialQqBase, "/me/report", {
       body: { params: { timeKey: "m" }, comm: { skill_version: "0.0.3" } },
       headers: { Authorization: `Bearer ${apiKey}` },
     });
-  const apple = (path, musicUserToken, params = {}, allowEmpty = false) => {
-    if (!appleDeveloperTokenUsable(config.appleDeveloperToken))
+  const apple = (path, musicUserToken, params = {}, allowEmpty = false, developerToken = appleDeveloper.getToken()) => {
+    if (!appleDeveloperTokenUsable(developerToken))
       throw new ApiError(
         503,
         "APPLE_NOT_CONFIGURED",
@@ -336,30 +351,106 @@ export function createAdapters(config, fetchImpl = fetch) {
       params,
       allowEmpty,
       headers: {
-        Authorization: `Bearer ${config.appleDeveloperToken}`,
+        Authorization: `Bearer ${developerToken}`,
         ...(musicUserToken ? { "Music-User-Token": musicUserToken } : {}),
       },
     });
   };
 
+  const metadata = createMusicMetadata({
+    cachePath: config.metadataCachePath,
+    // These endpoints contain public song metadata. GET keys the gateway cache by song IDs;
+    // the account-report POST/cache-bypass path is intentionally not used here.
+    loadNeteaseDetails: (ids, signal) => request(ncmBase, "/song/detail", { params: { ids: ids.join(",") }, signal, timeoutMs: 4500 }),
+    loadNeteaseWiki: (id, signal) => request(ncmBase, "/song/wiki/summary", { params: { id }, signal, timeoutMs: 4500 }),
+    loadQqGenres: (id, credential, signal) => qq("/song/genre", { id }, credential.secret, { signal, timeoutMs: 4500 }),
+    searchApple: (track, signal) => {
+      const token = appleDeveloper.getToken();
+      if (!appleDeveloperTokenUsable(token)) throw new ApiError(503, "APPLE_NOT_CONFIGURED", "目录查询暂不可用。");
+      return request(appleBase, "/v1/catalog/cn/search", {
+        params: { term: `${track.title} ${track.artist}`, types: "songs", limit: 10 },
+        headers: { Authorization: `Bearer ${token}` }, signal, timeoutMs: 4500,
+      });
+    },
+  });
+
   return {
+    async qqHistoryMonths(credential, { signal } = {}) {
+      if (credential?.kind !== "gateway")
+        throw new ApiError(422, "HISTORY_DIRECTORY_UNAVAILABLE", "当前 QQ 连接方式暂未提供可读取月份目录。");
+      let directory = qqAvailableMonths.get(credential);
+      if (!directory || directory.expiresAt <= Date.now()) {
+        // Without date, GetBar returns its current readable directory. The directory is
+        // authoritative for availability only, not proof that every report has loaded.
+        const payload = await qq("/user/listening-report", { range: "month" }, credential.secret, { signal });
+        directory = { months: new Set(qqDirectoryMonths(payload)), expiresAt: Date.now() + 10 * 60_000 };
+        qqAvailableMonths.set(credential, directory);
+      }
+      return {
+        provider: "qq",
+        months: [...directory.months].filter(month => closedMonth(monthPeriod(month))).sort(),
+        source: "qq-listening-report.availableDates",
+        rangeVerified: true,
+        scope: "currently-readable",
+      };
+    },
+    async neteaseDuration(credential, month, readOptions = {}) {
+      const period = monthPeriod(month);
+      const readiness = neteaseMonthReadiness(period);
+      if (readiness) throw new ApiError(422, readiness, "请选择已结束的月份。");
+      const payload = await ncmReport("/listen/data/report", { type: "month", endTime: Date.parse(`${period.end}T00:00:00+08:00`) }, credential.secret, readOptions);
+      if (!neteasePeriodMatches(payload, period)) throw new ApiError(422, "PERIOD_MISMATCH", "返回数据的日期与所选月份不一致。");
+      const seconds = config.neteaseDurationPath
+        ? configuredNeteaseDuration(payload, config.neteaseDurationPath, config.neteaseDurationUnit)
+        : neteaseMonthSeconds(payload);
+      if (seconds === null) throw new ApiError(422, "DURATION_MAPPING_REQUIRED", "这个月份尚未返回可核对单位的时长字段。");
+      return { listenSeconds: seconds, durationKind: "actual-total", coverageComplete: closedMonth(period) };
+    },
+    async history(credential, { signal } = {}) {
+      const options = { signal, timeoutMs: 20_000 };
+      const requests = await Promise.allSettled([
+        ncm("/api", { uri: "/api/vipmusic/newrecord/timedetail", data: { userId: "" }, crypto: "weapi" }, credential.secret, options),
+        ncm("/listen/data/year/report", {}, credential.secret, options),
+        ncm("/user/account", {}, credential.secret, { signal, timeoutMs: 5000 }),
+      ]);
+      const value = index => requests[index].status === "fulfilled" ? requests[index].value : undefined;
+      const directory = neteaseHistoryDirectory({ timedetail: value(0), yearReport: value(1), account: value(2) });
+      if (!directory) throw new ApiError(502, "HISTORY_DIRECTORY_UNAVAILABLE", "暂时无法取得历史月份目录，请稍后重试。");
+      return directory;
+    },
+    cachedMetadata: (provider, tracks) => metadata.cachedTracks(provider, tracks),
+    metadata: (tracks, connections = {}, options = {}) => metadata.enrich(tracks, { ...options, connections }),
     configured: {
       netease: Boolean(ncmBase),
       qq: Boolean(qqBase),
       get apple() {
-        return appleDeveloperTokenUsable(config.appleDeveloperToken);
+        return appleDeveloperTokenUsable(appleDeveloper.getToken());
       },
     },
+    async account(provider, credential) {
+      // Profile loading is optional and has its own short deadline; 803 already completed login.
+      const options = { timeoutMs: Math.min(config.timeoutMs ?? 12_000, 2500) };
+      if (provider === "apple") return { nickname: "Apple Music 账号" };
+      if (credential.kind !== "gateway") return null;
+      if (provider === "netease") {
+        const payload = await ncm("/user/account", {}, credential.secret, options);
+        return publicAccount(payload.profile ?? payload.data?.profile);
+      }
+      const payload = await qq("/login/status", {}, credential.secret, options);
+      const profile = payload.data?.profile;
+      return publicAccount({ nickname: profile?.nickname ?? profile?.nick, avatarUrl: profile?.avatarUrl });
+    },
     async appleConfig() {
-      if (!appleDeveloperTokenUsable(config.appleDeveloperToken))
+      const developerToken = appleDeveloper.getToken();
+      if (!appleDeveloperTokenUsable(developerToken))
         throw new ApiError(
           503,
           "APPLE_NOT_CONFIGURED",
           "Apple Music 连接尚未配置，或开发者令牌已过期。",
         );
-      if (appleConfigVerifiedUntil < Date.now()) {
+      if (appleConfigVerifiedUntil < Date.now() || appleConfigVerifiedToken !== developerToken) {
         try {
-          await apple("/v1/test", null, {}, true);
+          await apple("/v1/test", null, {}, true, developerToken);
         } catch (error) {
           if (error instanceof ApiError && error.code === "CONNECTION_EXPIRED")
             throw new ApiError(
@@ -370,9 +461,10 @@ export function createAdapters(config, fetchImpl = fetch) {
           throw error;
         }
         appleConfigVerifiedUntil = Date.now() + 5 * 60_000;
+        appleConfigVerifiedToken = developerToken;
       }
       return {
-        developerToken: config.appleDeveloperToken,
+        developerToken,
         appName: config.appleAppName || "zmusicstats",
       };
     },
@@ -402,10 +494,11 @@ export function createAdapters(config, fetchImpl = fetch) {
         );
       return {
         credential: { kind: "musickit", secret: musicUserToken },
-        account: null,
+        account: { nickname: "Apple Music 账号" },
       };
     },
     async createQr(provider) {
+      const createdAt = Date.now();
       const keyPayload =
         provider === "netease"
           ? await ncm("/login/qr/key")
@@ -426,7 +519,10 @@ export function createAdapters(config, fetchImpl = fetch) {
         qrImage.length > 1_000_000
       )
         throw new ApiError(502, "QR_UNAVAILABLE", "二维码图片格式无法读取。");
-      return { key, qrImage };
+      const mobileAuth = provider === "qq" && config.qqChannel === "qqmusic"
+        ? await qqMobileAuth(qrImage, { fetchImpl, timeoutMs: config.mobileAuthTimeoutMs ?? 5000 })
+        : undefined;
+      return { key, qrImage, expiresAt: createdAt + 3 * 60_000, ...(mobileAuth ? { mobileAuth } : {}) };
     },
     async checkQr(provider, key) {
       const payload =
@@ -471,7 +567,7 @@ export function createAdapters(config, fetchImpl = fetch) {
       await qqOfficial(apiKey);
       return { credential: { kind: "api-key", secret: apiKey }, account: null };
     },
-    async report(provider, credential, month) {
+    async report(provider, credential, month, readOptions = {}) {
       const period = monthPeriod(month);
       const base = {
         id: provider,
@@ -487,28 +583,43 @@ export function createAdapters(config, fetchImpl = fetch) {
       };
       const issues = [];
       if (provider === "netease") {
+        const readiness = neteaseMonthReadiness(period);
+        if (readiness) throw new ApiError(422, readiness, readiness === "MONTH_NOT_READY"
+          ? "网易云当月报告尚未生成，请选择已结束的月份。"
+          : "这个月份还未开始，请选择过去的月份。");
         const endTime = Date.parse(`${period.end}T00:00:00+08:00`);
         const results = await Promise.allSettled([
-          ncm(
+          ncmReport(
             "/listen/data/song/play/rank",
             { type: "month", endTime },
             credential.secret,
+            readOptions,
           ),
-          ncm(
+          ncmReport(
             "/listen/data/report",
             { type: "month", endTime },
             credential.secret,
+            readOptions,
           ),
         ]);
+        for (const result of results) {
+          if (result.status === "fulfilled" && !neteasePeriodMatches(result.value, period))
+            throw new ApiError(422, "PERIOD_MISMATCH", "网易云返回的日期与所选月份不一致，已停止展示这份数据。");
+        }
         if (results[0].status === "fulfilled")
           base.tracks = parseNeteaseRanks(results[0].value);
         else issues.push(publicIssue(provider, results[0].reason));
         if (results[1].status === "fulfilled") {
-          base.listenSeconds = configuredNeteaseDuration(
+          if (results[0].status === "rejected") {
+            base.tracks = neteaseTopSongFallback(results[1].value);
+            if (base.tracks.length) issues.push({ provider, code: "TOP_RANK_PARTIAL",
+              message: "完整排行榜暂时未响应，先显示月报中已确认的第 1 名歌曲。" });
+          }
+          base.listenSeconds = config.neteaseDurationPath ? configuredNeteaseDuration(
             results[1].value,
             config.neteaseDurationPath,
             config.neteaseDurationUnit,
-          );
+          ) : neteaseMonthSeconds(results[1].value);
           base.durationKind =
             base.listenSeconds === null ? "unknown" : "actual-total";
           base.coverageComplete =
@@ -576,6 +687,9 @@ export function createAdapters(config, fetchImpl = fetch) {
         });
       } else {
         const date = month.replace("-", "");
+        const unavailableMonth = () => ({ platform: base, issues: [{ provider, code: "PERIOD_UNAVAILABLE", message: "QQ 音乐当前返回的可读取月份目录不包含这个月份，不代表该月没有听歌。" }] });
+        const knownMonths = qqAvailableMonths.get(credential);
+        if (knownMonths?.expiresAt > Date.now() && !knownMonths.months.has(month)) return unavailableMonth();
         const results = await Promise.allSettled([
           qq(
             "/user/listening-rank",
@@ -588,41 +702,52 @@ export function createAdapters(config, fetchImpl = fetch) {
             credential.secret,
           ),
         ]);
-        if (results[0].status === "fulfilled")
-          base.tracks = parseQqRanks(results[0].value);
-        else issues.push(publicIssue(provider, results[0].reason));
+        if (results[1].status === "fulfilled" && results[1].value?.range === "month" && results[1].value.date === date) {
+          let months;
+          try { months = qqDirectoryMonths(results[1].value); }
+          catch { /* A missing or malformed directory must never suppress a later read. */ }
+          if (months) {
+            qqAvailableMonths.set(credential, { months: new Set(months), expiresAt: Date.now() + 10 * 60_000 });
+            if (!months.includes(month)) return unavailableMonth();
+          }
+        }
+        if (results[0].status === "fulfilled") {
+          try {
+            const payload = results[0].value;
+            // 3.3.8 always echoes the explicit range/date. Never relabel a current
+            // or undated ranking as the historical month the user selected.
+            if (payload.range !== "month" || payload.date !== date)
+              throw new ApiError(502, "PERIOD_UNCONFIRMED", "QQ 音乐返回的歌曲榜单月份未匹配所选月份。");
+            base.tracks = parseQqRanks(payload);
+          } catch (error) {
+            base.rankingPeriod = null;
+            issues.push(publicIssue(provider, error));
+          }
+        } else {
+          base.rankingPeriod = null;
+          issues.push(publicIssue(provider, results[0].reason));
+        }
         if (results[1].status === "fulfilled") {
           const payload = results[1].value;
-          if (
-            payload.range === "month" &&
-            (payload.date === date || payload.date === undefined)
-          ) {
+          if (payload.range === "month" && payload.date === date) {
             base.listenSeconds = finiteCount(payload.listenSeconds);
+            if (base.listenSeconds === 0 && base.tracks.some(track => typeof track.count === "number" && track.count > 0)) {
+              base.listenSeconds = null;
+              issues.push({ provider, code: "DURATION_INCONSISTENT", message: "QQ 音乐返回的零时长与实际歌曲播放次数矛盾，暂不计入时长统计。" });
+            }
             base.durationKind =
               base.listenSeconds === null ? "unknown" : "actual-total";
             base.coverageComplete =
               base.listenSeconds !== null && closedMonth(period);
+            if (base.listenSeconds === null && !issues.some(issue => issue.code === "DURATION_INCONSISTENT"))
+              issues.push({ provider, code: "DURATION_UNAVAILABLE", message: "QQ 音乐未返回所选月份的实际听歌时长，不按零计算。" });
+          } else {
+            issues.push({ provider, code: "PERIOD_UNCONFIRMED", message: "QQ 音乐返回的听歌时长月份未匹配所选月份，暂不计入。" });
           }
         } else issues.push(publicIssue(provider, results[1].reason));
-        // Avoid a burst of per-song calls; enrich a bounded Top 10 sequentially.
-        for (const track of base.tracks.slice(0, 10)) {
-          if (!/^\d+$/.test(track.id)) continue;
-          try {
-            const genre = await qq(
-              "/song/genre",
-              { id: track.id },
-              credential.secret,
-            );
-            if (Array.isArray(genre.genres))
-              track.genres = genre.genres
-                .map((item) => text(item.name))
-                .filter(Boolean);
-          } catch (error) {
-            issues.push(publicIssue(provider, error));
-            break;
-          }
-        }
       }
+      // Public metadata is collected separately; monthly history reads never wait on per-song lookups.
+      base.tracks = metadata.cachedTracks(provider, base.tracks);
       return { platform: base, issues };
     },
   };

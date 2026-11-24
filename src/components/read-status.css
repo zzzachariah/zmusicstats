@@ -1,0 +1,61 @@
+.read-status { --rs-gold: #c6ac7d; --rs-muted: #a0a39b; width: 100%; min-width: 0; color: var(--paper, #eee9df); }
+.read-status .read-status-title { margin: 0 0 16px; font-size: 15px; font-weight: 600; letter-spacing: .02em; }
+.read-status .read-status-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.read-status .read-status-card { display: flex; flex-direction: column; min-width: 0; padding: 18px 18px 10px; border: 1px solid var(--line, #ffffff20); border-radius: 12px; background: linear-gradient(145deg, #ffffff04, #ffffff01); }
+.read-status .read-status-card-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.read-status .read-status-card h4 { margin: 0; font-size: 12px; font-weight: 500; color: var(--rs-muted); }
+.read-status .read-status-indicator { width: 12px; height: 12px; flex: 0 0 12px; border: 1px solid #c6ac7d5c; border-radius: 50%; box-shadow: inset 0 0 0 3px #20211f; background: var(--rs-gold); }
+.read-status .read-status-indicator.is-loading { background: none; border: 1.5px solid #c6ac7d30; border-top-color: var(--rs-gold); box-shadow: none; animation: read-status-spin 1.3s linear infinite; }
+.read-status .read-status-indicator.is-error { border-color: #d5775770; background: #d57757; animation: none; }
+.read-status .read-status-count { margin: 14px 0 12px; font-size: 26px; line-height: 1.2; font-variant-numeric: tabular-nums; letter-spacing: -.04em; }
+.read-status .read-status-count > span { color: var(--rs-muted); font-size: 12px; letter-spacing: 0; }
+.read-status .read-status-meter { height: 3px; overflow: hidden; border-radius: 4px; background: #ffffff0a; }
+.read-status .read-status-meter > span { display: block; height: 100%; border-radius: inherit; background: var(--rs-gold); transition: width .45s ease; }
+.read-status .read-status-meter.is-active > span { background: linear-gradient(90deg, #a18b61, #d5bd90, #a18b61); background-size: 200% 100%; animation: read-status-shimmer 2.4s ease-in-out infinite; }
+.read-status .read-status-live { margin: 12px 0 4px; min-height: 20px; font-size: 11px; line-height: 1.65; color: var(--rs-muted); overflow-wrap: anywhere; }
+.read-status .read-status-action { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; margin-top: auto; padding: 8px 0; width: 100%; color: var(--rs-gold); font-size: 11px; text-align: left; cursor: pointer; }
+.read-status .read-status-action:disabled { color: #75776f; cursor: default; }
+.read-status .read-status-action > span { font-size: 15px; }
+.read-status .read-status-note { margin: 12px 0 16px; color: var(--rs-muted); font-size: 11px; line-height: 1.8; }
+.read-status .read-status-months, .read-status .read-status-diagnostics { border-top: 1px solid var(--line, #ffffff20); }
+.read-status summary { display: flex; align-items: center; gap: 12px; min-height: 48px; cursor: pointer; list-style: none; font-size: 12px; line-height: 1.55; }
+.read-status summary::-webkit-details-marker { display: none; }
+.read-status summary::after { content: "+"; flex: 0 0 12px; margin-left: 2px; color: var(--rs-muted); font-size: 16px; text-align: center; }
+.read-status details[open] > summary::after { content: "−"; }
+.read-status .read-status-summary-count { margin-left: auto; color: var(--rs-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.read-status .read-status-month { border-top: 1px solid #ffffff0a; }
+.read-status .read-status-month > summary { gap: 10px; }
+.read-status .read-status-month > summary > span:first-child { flex-shrink: 0; }
+.read-status .read-status-month-hint { margin-left: auto; color: var(--rs-muted); font-size: 10px; text-align: right; }
+.read-status .is-error { color: #e19c82; }
+.read-status .read-status-platforms { display: grid; gap: 8px; padding: 0 0 14px; }
+.read-status .read-status-platform { min-width: 0; padding: 12px 14px; border-radius: 8px; background: #ffffff03; border: 1px solid #ffffff08; }
+.read-status .read-status-platform-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; }
+.read-status .read-status-platform-name { display: inline-flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 500; }
+.read-status .read-status-platform-name > i { width: 5px; height: 5px; border-radius: 50%; flex: 0 0 5px; }
+.read-status .read-status-badge { color: var(--rs-muted); font-size: 10px; line-height: 1.5; }
+.read-status .read-status-badge.is-ready { color: #a7bba4; }
+.read-status .read-status-badge.is-warning { color: #c6ac7d; }
+.read-status .read-status-badge.is-error { color: #e19c82; }
+.read-status .read-status-platform-note { margin: 7px 0 0; font-size: 10px; line-height: 1.75; color: var(--rs-muted); overflow-wrap: anywhere; }
+.read-status .read-status-source-details > summary { min-height: 38px; color: var(--rs-muted); font-size: 10px; justify-content: flex-start; }
+.read-status .read-status-source-details > summary::after { font-size: 13px; }
+.read-status ul { margin: 0 0 14px; padding: 0 0 0 16px; color: var(--rs-muted); font-size: 11px; line-height: 1.8; overflow-wrap: anywhere; }
+.read-status li + li { margin-top: 8px; }
+.read-status .read-status-code { display: block; font-size: 9px; letter-spacing: .03em; color: #c6ac7dbb; }
+.read-status .read-status-show-more { width: 100%; min-height: 44px; margin: 4px 0 10px; border: 1px solid var(--line, #ffffff20); border-radius: 7px; color: var(--rs-muted); font-size: 11px; cursor: pointer; }
+.read-status button:not(:disabled):hover { color: var(--paper, #eee9df); }
+.read-status :is(button, summary):focus-visible { outline: 2px solid var(--accent, #d57757); outline-offset: 3px; border-radius: 4px; }
+@keyframes read-status-spin { to { transform: rotate(360deg); } }
+@keyframes read-status-shimmer { 50% { background-position: 100% 0; } }
+@media (max-width: 480px) {
+  .read-status .read-status-cards { grid-template-columns: 1fr; gap: 10px; }
+  .read-status .read-status-card { padding: 15px 16px 7px; }
+  .read-status .read-status-count { margin: 10px 0; font-size: 24px; }
+  .read-status .read-status-platform { padding: 12px; }
+  .read-status .read-status-month-hint { max-width: 48%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .read-status .read-status-indicator.is-loading, .read-status .read-status-meter.is-active > span { animation: none; }
+  .read-status .read-status-meter > span { transition: none; }
+}

@@ -1,0 +1,68 @@
+.time-perspective { --time-ink: #c9b088; min-width: 0; padding: 24px 0; color: var(--paper,#eee9df); text-align: left; }
+.time-perspective-heading { display: flex; align-items: baseline; flex-wrap: wrap; gap: 5px 12px; }
+.time-perspective-heading > span { font-size: 12px; line-height: 1.5; }
+.time-perspective-heading > strong { margin-left: auto; font-family: "Manrope Variable", "Noto Sans SC Variable", sans-serif; font-size: 22px; font-weight: 450; font-variant-numeric: tabular-nums; letter-spacing: -.04em; }
+.time-perspective-heading > small { flex-basis: 100%; color: var(--muted,#a0a39b); font-size: 10px; line-height: 1.6; }
+.time-perspective-heading > .time-unit-value { margin-left: auto; }
+.time-unit-value { display: grid; justify-items: start; gap: 5px; width: max-content; min-width: 0; max-width: 100%; }
+.time-unit-readout { display: grid; grid-template-columns: 32px minmax(0,1fr); align-items: center; gap: 8px; width: max-content; min-width: 0; max-width: 100%; }
+.time-unit-numbers { display: grid; min-width: 0; }
+.time-unit-number { grid-area: 1 / 1; justify-self: end; font: 450 22px/1.2 "Manrope Variable","Noto Sans SC Variable",sans-serif; font-variant-numeric: tabular-nums; letter-spacing: -.04em; color: var(--paper,#eee9df); white-space: nowrap; text-align: right; }
+.time-unit-measure { visibility: hidden; pointer-events: none; user-select: none; }
+.time-unit-number > span { margin-left: 5px; font: 400 11px/1.4 "Manrope Variable","Noto Sans SC Variable",sans-serif; letter-spacing: 0; color: var(--muted,#a0a39b); }
+.time-unit-switch { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 32px; width: 32px; height: 32px; min-width: 32px; min-height: 32px; padding: 0; border: 1px solid #b8c5b224; border-radius: 50%; background: transparent; color: var(--muted,#a0a39b); cursor: pointer; transition: border-color 160ms ease,color 160ms ease; }
+.time-unit-switch:hover { color: #eed5ad; border-color: #c9b08875; }
+.time-unit-switch:focus-visible { outline: 1px solid #c9b088; outline-offset: 3px; }
+.time-unit-basis { contain: inline-size; justify-self: stretch; min-height: 13px; color: var(--muted,#a0a39b); font: 9px/13px "Manrope Variable","Noto Sans SC Variable",sans-serif; text-align: right; white-space: nowrap; }
+.time-unit-basis.is-empty { visibility: hidden; }
+.time-unit-value.is-compact { gap: 4px; width: 124px; max-width: 100%; }
+.time-unit-value.is-compact .time-unit-readout { gap: 6px; width: 100%; }
+.time-unit-value.is-compact .time-unit-number { font-size: 17px; }
+.time-unit-value.is-compact .time-unit-number > span { display: block; margin: 2px 0 0; font-size: 9px; }
+.track-details-time-face .time-perspective-heading > .time-unit-value { margin-inline: auto; }
+.time-perspective-story { display: flex; align-items: center; gap: 16px; min-height: 100px; padding-block: 12px; animation: time-reveal 280ms ease-out both; }
+.time-scene { width: 76px; height: 76px; flex: 0 0 76px; overflow: visible; color: var(--time-ink); }
+.time-orbit { stroke: currentColor; opacity: .35; stroke-width: .7; stroke-dasharray: 1 3; }
+.time-orbit-inner { stroke: currentColor; opacity: .22; stroke-width: .6; }
+.time-sun { fill: #cf845f; }
+.time-planet { fill: #b8c5b2; }
+.time-moon { fill: #d8d1b8; }
+.time-orbiting { transform-origin: 50px 50px; animation: time-orbit 4.5s ease-in-out 1; }
+.time-petals { transform-origin: 50px 50px; animation: time-breathe 2.2s ease-in-out 2; }
+.time-petals ellipse { stroke: #b8c5b2; fill: #b8c5b20a; stroke-width: .7; }
+.time-flower-heart { fill: #cf845f; }
+.time-record { fill: #151914; stroke: #b8c5b23c; stroke-width: .8; }
+.time-glint { stroke: #d2b78f; stroke-width: 2; stroke-linecap: round; }
+.time-hole { fill: #151914; }
+.time-perspective-copy { min-width: 0; }
+.time-perspective-eyebrow { font-size: 9px; letter-spacing: .08em; color: var(--time-ink); }
+.time-perspective-copy p { margin: 8px 0 0; font-size: 15px; line-height: 1.8; font-family: "Noto Serif SC Variable",serif; font-weight: 450; text-wrap: pretty; overflow-wrap: anywhere; }
+.time-perspective[lang="en"] .time-perspective-copy p { font-family: "Instrument Serif",Georgia,serif; font-size: 23px; line-height: 1.25; font-weight: 400; }
+.time-perspective-actions { display: flex; flex-wrap: wrap; align-items: start; gap: 8px 20px; }
+.time-perspective-next { display: inline-flex; align-items: center; gap: 12px; min-height: 36px; background: transparent; border: 0; padding: 3px 0; color: #c9b088; cursor: pointer; font: 11px/1.5 "Manrope Variable","Noto Sans SC Variable",sans-serif; }
+.time-perspective-next:hover { color: #f0d5ae; }
+.time-perspective-next:focus-visible,.time-perspective-method summary:focus-visible { outline: 1px solid #c9b088; outline-offset: 3px; }
+.time-perspective-method { flex: 1; min-width: 140px; font-size: 10px; line-height: 1.8; color: var(--muted,#a0a39b); }
+.time-perspective-method summary { cursor: pointer; width: max-content; padding: 9px 0; }
+.time-perspective-method p { font: inherit; margin: 4px 0 10px; }
+.time-perspective-method a { color: #c9b088; text-underline-offset: 4px; }
+.time-perspective-unavailable { color: var(--muted,#a0a39b); font-size: 12px; line-height: 1.8; }
+.time-perspective.is-inline { max-width: 470px; padding: 8px 0 0; }
+.time-perspective.is-inline .time-perspective-story { padding-block: 8px; min-height: 0; }
+.time-perspective.is-inline .time-scene { width: 58px; height: 58px; flex-basis: 58px; }
+.time-perspective.is-compact { padding: 12px 0 4px; }
+.time-perspective.is-compact .time-perspective-heading > strong { font-size: 19px; }
+.time-perspective.is-compact .time-perspective-story { gap: 10px; min-height: 0; padding-block: 10px; }
+.time-perspective.is-compact .time-scene { width: 52px; height: 52px; flex-basis: 52px; }
+.time-perspective.is-compact .time-perspective-copy p { font-size: 12px; line-height: 1.65; margin-top: 4px; }
+.time-perspective.is-compact[lang="en"] .time-perspective-copy p { font-size: 17px; line-height: 1.2; }
+.time-perspective-compact-note { display: block; color: #a0a894; font-size: 9px; line-height: 1.65; }
+.platform-time-stories { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,260px),1fr)); gap: 0 36px; border-top: 1px solid var(--line); margin-top: 12px; }
+.platform-time-stories > .time-perspective { border-bottom: 1px solid var(--line); }
+.genre-time-total { margin-top: 8px; border-bottom: 1px solid var(--line); padding-bottom: 16px; }
+.genre-time-total .time-perspective-heading > span { font-size: 10px; color: var(--muted); }
+.zm-genre-hour-label { display: block; font: 9px/1.5 "Manrope Variable","Noto Sans SC Variable",sans-serif; color: var(--chart-muted); margin-top: 4px; white-space: nowrap; }
+@keyframes time-orbit { from { transform: rotate(-80deg); } to { transform: rotate(280deg); } }
+@keyframes time-breathe { 0%,100% { transform: scale(.87) rotate(0deg); } 50% { transform: scale(1) rotate(8deg); } }
+@keyframes time-reveal { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
+@media(prefers-reduced-motion:reduce) { .time-orbiting,.time-petals,.time-perspective-story { animation: none; } .time-unit-switch { transition: none; } }

@@ -1,0 +1,166 @@
+.zm-donut-card {
+  --chart-paper: var(--paper, #eee9df);
+  --chart-muted: var(--muted, #a0a39b);
+  --chart-line: var(--line, rgba(227, 225, 212, .13));
+  color: var(--chart-paper);
+  min-width: 0;
+  container-type: inline-size;
+}
+.zm-donut-card .zm-donut-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 17px;
+  border-bottom: 1px solid var(--chart-line);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.zm-donut-card .zm-donut-mode,
+.zm-donut-card .zm-donut-coverage {
+  color: var(--chart-muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .04em;
+  white-space: nowrap;
+}
+.zm-donut-card .zm-donut-layout {
+  display: grid;
+  grid-template-columns: minmax(160px, .9fr) minmax(0, 1fr);
+  gap: clamp(20px, 4cqi, 38px);
+  align-items: center;
+  padding: 23px 0 15px;
+}
+.zm-donut-card .zm-donut-plot {
+  width: 100%;
+  max-width: 288px;
+  aspect-ratio: 1;
+  position: relative;
+  margin-inline: auto;
+  isolation: isolate;
+}
+.zm-donut-card .zm-donut-svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.zm-donut-card .zm-donut-outer-guide { fill: none; stroke: var(--chart-line); stroke-width: .55; stroke-dasharray: 1 3.7; }
+.zm-donut-card .zm-donut-track { fill: none; stroke: #30332e; stroke-width: 27; }
+.zm-donut-card .zm-donut-groove { fill: none; stroke: var(--chart-line); stroke-width: .65; }
+.zm-donut-card .zm-donut-spindle { fill: #aaa48e; }
+.zm-donut-card .zm-donut-segment { transition: transform 220ms cubic-bezier(.2,.8,.2,1); }
+.zm-donut-card .zm-donut-segment.is-selected { transform: translate(var(--segment-x), var(--segment-y)); }
+.zm-donut-card .zm-donut-segment.is-muted { opacity: .3; }
+.zm-donut-card .zm-donut-interactive { cursor: pointer; outline: none; }
+.zm-donut-card .zm-donut-interactive .zm-donut-segment { pointer-events: none; }
+.zm-donut-card .zm-donut-interactive:focus-visible .zm-donut-segment { filter: drop-shadow(0 0 1px var(--chart-paper)); }
+.zm-donut-card .zm-donut-hit-area { pointer-events: stroke; }
+.zm-donut-card .zm-donut-center {
+  position: absolute;
+  inset: 28% 23% 27%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  text-align: center;
+  pointer-events: none;
+}
+.zm-donut-card .zm-donut-center-label { color: var(--chart-muted); font-size: clamp(8px, 1.8cqi, 10px); line-height: 1.4; letter-spacing: .055em; max-width: 100%; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
+.zm-donut-card .zm-donut-center strong {
+  font-family: "Instrument Serif", Georgia, serif;
+  font-size: clamp(38px, 10cqi, 61px);
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: -.035em;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+.zm-donut-card .zm-donut-center.is-detail strong { font-size: clamp(30px, 8cqi, 48px); }
+.zm-donut-card .zm-donut-center-detail { color: var(--chart-muted); font-size: clamp(8px, 1.7cqi, 10px); line-height: 1.45; }
+.zm-donut-card .zm-donut-legend { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.zm-donut-card .zm-donut-legend-button {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 46px;
+  padding: 10px 8px;
+  border: 0;
+  border-radius: 5px;
+  color: var(--chart-paper);
+  background: transparent;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+.zm-donut-card .zm-donut-legend-button:hover,
+.zm-donut-card .zm-donut-legend-button.is-selected { background: rgba(237, 232, 216, .055); }
+.zm-donut-card .zm-donut-legend-button:focus-visible { outline: 2px solid var(--accent, #d57757); outline-offset: 2px; }
+.zm-donut-card .zm-donut-legend-button:disabled { opacity: .55; cursor: default; }
+.zm-donut-card .zm-platform-legend-button { grid-template-columns: 28px minmax(0, 1fr) auto; row-gap: 9px; padding-block: 13px; border-bottom: 1px solid var(--chart-line); border-radius: 5px 5px 0 0; }
+.zm-donut-card .zm-platform-icon-ring { display: grid; place-items: center; width: 27px; height: 27px; border: 1px solid var(--source-ink); border-radius: 50%; }
+.zm-donut-card .zm-platform-metrics { grid-column: 2 / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.zm-donut-card .zm-platform-metrics > span { min-width: 0; }
+.zm-donut-card .zm-platform-metrics small { display: block; color: var(--chart-muted); font-size: 9px; line-height: 1.6; }
+.zm-donut-card .zm-platform-metrics strong { display: block; margin-top: 3px; color: var(--chart-paper); font-size: 11px; font-weight: 500; line-height: 1.5; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.zm-donut-card .zm-platform-metrics strong.is-missing { color: var(--chart-muted); font-size: 10px; font-weight: 400; }
+.zm-donut-card .zm-platform-sample-count { grid-column: 2 / -1; color: var(--chart-muted); font-size: 9px; line-height: 1.5; }
+.zm-donut-card .zm-donut-swatch { width: 7px; height: 7px; border-radius: 50%; background: var(--swatch); }
+.zm-donut-card .zm-donut-legend-name { font-size: 12px; line-height: 1.45; overflow-wrap: anywhere; }
+.zm-donut-card .zm-donut-legend-name > small { display: block; margin-top: 4px; color: var(--chart-muted); font-size: 10px; font-variant-numeric: tabular-nums; }
+.zm-donut-card .zm-donut-legend-value { white-space: nowrap; font-size: 13px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.zm-donut-card .zm-donut-legend-value > small { margin-left: 2px; color: var(--chart-muted); font-size: 9px; font-weight: 400; }
+.zm-donut-card .zm-donut-selection { min-height: 28px; margin: 9px 8px 0; color: var(--chart-muted); font-size: 10px; line-height: 1.6; }
+.zm-donut-card .zm-donut-expand { display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%; min-height: 44px; margin-top: 3px; padding: 10px 8px; border: 0; border-top: 1px solid var(--chart-line); background: transparent; color: var(--chart-paper); font: inherit; font-size: 11px; text-align: left; }
+.zm-donut-card .zm-donut-expand > span { font-size: 17px; color: var(--accent, #d57757); }
+.zm-donut-card .zm-donut-expand:focus-visible { outline: 2px solid var(--accent, #d57757); outline-offset: 2px; }
+.zm-donut-card .zm-donut-pattern { margin: 10px 0 0; font-size: 12px; line-height: 1.8; color: var(--chart-paper); }
+.zm-donut-card .zm-donut-footnote { margin: 11px 0 0; color: var(--chart-muted); font-size: 11px; line-height: 1.85; }
+.zm-donut-card .zm-genre-tracks-card { grid-column: 1 / -1; position: sticky; top: 92px; align-self: start; min-width: 0; padding: 22px; border: 1px solid var(--chart-line); border-radius: 10px; background: var(--surface, #1b1d1b); }
+.zm-donut-card .zm-genre-tracks-eyebrow { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--chart-muted); font-size: 9px; line-height: 1.6; letter-spacing: .09em; }
+.zm-donut-card .zm-genre-tracks-eyebrow > span:last-child { color: var(--genre-ink); font-size: 18px; }
+.zm-donut-card .zm-genre-tracks-title { display: flex; justify-content: space-between; align-items: baseline; gap: 18px; padding: 12px 0 17px; border-bottom: 1px solid var(--chart-line); }
+.zm-donut-card .zm-genre-tracks-title h3 { min-width: 0; margin: 0; color: var(--chart-paper); font-family: "Noto Serif SC Variable", serif; font-size: 26px; font-weight: 400; line-height: 1.35; overflow-wrap: anywhere; }
+.zm-donut-card[lang="en"] .zm-genre-tracks-title h3 { font-family: "Instrument Serif", Georgia, serif; font-size: 34px; }
+.zm-donut-card .zm-genre-tracks-title > span { flex: 0 0 auto; color: var(--genre-ink); font-family: "Instrument Serif", Georgia, serif; font-size: 34px; line-height: 1; font-variant-numeric: tabular-nums; }
+.zm-donut-card .zm-genre-tracks-title small { margin-left: 2px; font-family: "Manrope Variable", sans-serif; font-size: 11px; }
+.zm-donut-card .zm-genre-track-list { margin: 0; padding: 0; list-style: none; }
+.zm-donut-card .zm-genre-track-row { display: grid; grid-template-columns: 20px 44px minmax(0, 1fr); align-items: start; gap: 11px; padding: 17px 0; border-bottom: 1px solid var(--chart-line); }
+.zm-donut-card .zm-genre-track-row:last-child { border-bottom: 0; }
+.zm-donut-card .zm-genre-track-rank { padding-top: 3px; color: var(--chart-muted); font-size: 10px; font-variant-numeric: tabular-nums; }
+.zm-donut-card .zm-genre-track-art { position: relative; display: grid; place-items: center; width: 44px; height: 44px; overflow: hidden; border: 1px solid var(--chart-line); border-radius: 4px; background: #242720; }
+.zm-donut-card .zm-genre-track-art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.zm-donut-card .zm-genre-track-record { width: 31px; height: 31px; border: 1px solid #777e70; border-radius: 50%; background: repeating-radial-gradient(circle, transparent 0 3px, #777c6f5c 3.6px 4.1px); }
+.zm-donut-card .zm-genre-track-record::after { content: ""; position: absolute; left: 18px; top: 18px; width: 6px; height: 6px; border-radius: 50%; background: var(--genre-ink); }
+.zm-donut-card .zm-genre-track-copy { min-width: 0; }
+.zm-donut-card .zm-genre-track-copy > strong { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; color: var(--chart-paper); font: 500 12px/1.6 "Manrope Variable", "Noto Sans SC Variable", sans-serif; overflow-wrap: anywhere; }
+.zm-donut-card .zm-genre-track-artist { display: block; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--chart-muted); font-size: 10px; line-height: 1.6; }
+.zm-donut-card .zm-genre-track-count { display: block; margin-top: 6px; color: var(--genre-ink); font-size: 10px; line-height: 1.7; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.zm-donut-card .zm-genre-track-timing { display: block; color: var(--chart-muted); font-size: 10px; line-height: 1.7; font-variant-numeric: tabular-nums; }
+.zm-donut-card .zm-genre-tracks-note, .zm-donut-card .zm-genre-track-empty { margin: 9px 0 0; color: var(--chart-muted); font-size: 10px; line-height: 1.85; }
+@container (min-width: 840px) {
+  .zm-donut-card.has-track-details .zm-donut-layout { grid-template-columns: minmax(210px, .85fr) minmax(165px, .7fr) minmax(290px, 1.15fr); gap: 25px; align-items: start; }
+  .zm-donut-card.has-track-details .zm-donut-plot { align-self: center; }
+  .zm-donut-card.has-track-details .zm-genre-tracks-card { grid-column: 3; grid-row: 1; }
+}
+.zm-donut-card .zm-donut-empty-copy strong { display: block; font-family: "Noto Serif SC Variable", serif; font-size: 20px; font-weight: 400; line-height: 1.6; }
+.zm-donut-card[lang="en"] .zm-donut-empty-copy strong { font-family: "Instrument Serif", Georgia, serif; font-size: 27px; line-height: 1.2; }
+.zm-donut-card .zm-donut-empty-copy p { color: var(--chart-muted); font-size: 12px; line-height: 1.85; }
+.zm-donut-card.is-empty .zm-donut-outer-guide { stroke-dasharray: 1 5; }
+.zm-donut-card .zm-donut-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+@container (max-width: 400px) {
+  .zm-donut-card .zm-donut-layout { grid-template-columns: 1fr; gap: 13px; padding-top: 18px; }
+  .zm-donut-card .zm-donut-plot { max-width: 230px; }
+  .zm-donut-card .zm-donut-center strong { font-size: 49px; }
+  .zm-donut-card .zm-donut-center.is-detail strong { font-size: 43px; }
+  .zm-donut-card .zm-donut-center-label,
+  .zm-donut-card .zm-donut-center-detail { font-size: 10px; }
+  .zm-donut-card .zm-donut-legend-button { padding-inline: 5px; }
+  .zm-donut-card .zm-donut-empty-copy { text-align: center; }
+  .zm-donut-card.has-track-details .zm-genre-tracks-card { grid-row: 2; position: static; padding: 17px; }
+  .zm-donut-card.has-track-details .zm-donut-legend { grid-row: 3; }
+  .zm-donut-card .zm-genre-track-row { grid-template-columns: 16px 40px minmax(0, 1fr); gap: 9px; }
+  .zm-donut-card .zm-genre-track-art { width: 40px; height: 40px; }
+  .zm-donut-card .zm-genre-track-record::after { left: 16px; top: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .zm-donut-card .zm-donut-segment { transition: none; }
+  .zm-donut-card .zm-donut-segment.is-selected { transform: none; }
+}

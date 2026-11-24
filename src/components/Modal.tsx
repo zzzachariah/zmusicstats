@@ -34,7 +34,7 @@ export function Modal({
         ref.current?.querySelectorAll<HTMLElement>(
           'button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), [tabindex="0"]',
         ) ?? [],
-      );
+      ).filter(el => el.getClientRects().length > 0 && !el.closest("[inert]"));
       const first = els[0],
         last = els.at(-1);
       if (!first) {

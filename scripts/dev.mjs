@@ -40,6 +40,11 @@ if (
       }),
     );
 }
+const qqGatewayURL = process.env.QQ_API_BASE_URL || "";
+if (existsSync(path.join(cwd, "work/qq-gateway/node_modules/@yakult-green-tea/qq-music-api/package.json")) && /^http:\/\/(127\.0\.0\.1|localhost):3201\/?$/.test(qqGatewayURL)) {
+  const running = await fetch(`${qqGatewayURL}/health`, { signal: AbortSignal.timeout(1200) }).then(r => r.ok).catch(() => false);
+  if (!running) children.push(spawn(process.execPath, ["server/start-qq.mjs"], { cwd, env, stdio: "inherit" }));
+}
 children.push(
   spawn(process.execPath, ["--watch", "server/index.mjs"], {
     cwd,

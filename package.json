@@ -10,15 +10,19 @@
     "dev:api": "node --env-file-if-exists=.env server/index.mjs",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host 0.0.0.0",
-    "test": "node --experimental-strip-types --test src/lib/*.test.ts server/*.test.mjs"
+    "test": "node --experimental-strip-types --test src/lib/*.test.ts server/*.test.mjs",
+    "setup:qq": "node server/setup-qq.mjs",
+    "setup:apple": "node server/configure-apple.mjs"
   },
   "dependencies": {
     "@fontsource-variable/manrope": "^5.3.0",
     "@fontsource-variable/noto-sans-sc": "^5.3.1",
     "@fontsource-variable/noto-serif-sc": "^5.3.1",
     "@fontsource/instrument-serif": "^5.3.0",
+    "jsqr": "1.4.0",
     "lucide-react": "1.79.0",
     "motion": "14.14.0",
+    "pngjs": "7.0.0",
     "react": "19.3.1",
     "react-dom": "19.3.1"
   },

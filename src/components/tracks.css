@@ -1,0 +1,57 @@
+.app-shell .detailed-tracks .track-row { display:grid; grid-template-columns:32px 48px minmax(0,1fr) 74px 34px 42px 44px; grid-auto-flow:row; grid-template-rows:auto; align-items:center; min-height:88px; padding:16px 0; gap:12px; }
+.app-shell .detailed-tracks .track-row > * { align-self:center; margin-block:0; }
+.app-shell .detailed-tracks .track-table-head { grid-template-columns:32px 48px minmax(0,1fr) 74px 34px 42px 44px; gap:12px; padding:0 0 14px; align-items:center; }
+.app-shell .detailed-tracks .track-table-head > span:first-child { grid-column:1 / 4; }
+.app-shell .detailed-tracks .album-cover { width:48px; height:48px; }
+.app-shell .detailed-tracks .track-rank { font-size:11px; text-align:center; font-variant-numeric:tabular-nums; color:#9b9e94; white-space:nowrap; }
+.app-shell .detailed-tracks .track-table-head > span:nth-child(2),.app-shell .detailed-tracks .track-table-head > span:nth-child(4) { text-align:right; }
+.app-shell .detailed-tracks .track-table-head > span:nth-child(3) { text-align:center; }
+.app-shell .detailed-tracks .track-table-head > span:last-child { text-align:left; }
+.detailed-tracks .track-duration { color:#9c9e93; font:500 11px/1.3 "Manrope Variable",sans-serif; font-variant-numeric:tabular-nums; text-align:right; }
+.detailed-tracks .source-badge { display:inline-flex; width:22px; height:22px; border-radius:50%; background:transparent; border:0; }
+.detailed-tracks .track-source-netease .track-count { color:#ed957e; }
+.detailed-tracks .track-source-qq .track-count { color:#a8c9b2; }
+.detailed-tracks .track-source-apple .track-count { color:#d3ba8d; }
+.detailed-tracks .track-count { white-space:nowrap; font-variant-numeric:tabular-nums; }
+.detailed-tracks .track-title { min-width:0; }
+.track-pagination { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px; border-top:1px solid var(--line); padding:22px 0 5px; }
+.track-pagination > div { display:flex; align-items:center; gap:7px; }
+.track-pagination button,.track-pagination select { background:#e3dfcf08; color:var(--paper); border:1px solid #ded8c827; border-radius:6px; height:36px; }
+.track-pagination button { display:grid; place-items:center; width:36px; cursor:pointer; }
+.track-pagination select { padding:0 9px; cursor:pointer; font:inherit; font-size:11px; }
+.track-pagination select option { background:#20271e; }
+.track-pagination button:hover:not(:disabled) { background:#e3dfcf18; }
+.track-pagination button:disabled { opacity:.3; cursor:default; }
+.track-page-range { font-size:11px; color:#aaa99a; font-variant-numeric:tabular-nums; }
+.tracks-panel { scroll-margin-top:22px; }
+.genre-explore-link { width:100%; display:flex; align-items:center; justify-content:space-between; gap:14px; padding:15px 0; border:0; border-top:1px solid #dfdac81f; background:transparent; color:#a8ad9c; text-align:left; cursor:pointer; font:inherit; font-size:11px; line-height:1.8; }
+.genre-explore-link strong { display:block; color:#d4c6a6; font-weight:500; }
+.genre-explore-link:hover strong { color:#f0dfb8; }
+.app-shell .genre-panel { display:block; }
+.app-shell .genre-panel > .section-heading { max-width:none; margin-bottom:24px; }
+.app-shell .genre-panel > .scope-note { margin-top:15px; }
+.app-shell .genre-panel > .text-button { display:inline-flex; margin-top:15px; }
+.known-duration-note { display:block; max-width:320px; color:var(--muted); font:400 10px/1.7 "Manrope Variable","Noto Sans SC Variable",sans-serif; margin-top:10px; }
+.partial-report-status { display:flex; gap:10px; align-items:center; margin:22px 0; padding:15px 18px; border:1px solid var(--line); border-radius:8px; color:var(--muted); font-size:12px; line-height:1.8; }
+.track-interaction-hint { display:flex; align-items:center; justify-content:flex-end; gap:6px; font-size:10px; color:#a5a99a; margin:0 0 17px; line-height:1.7; }
+.hint-touch { display:none; }
+.sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+@media(min-width:901px) {
+  .app-shell .full-content .detailed-tracks .track-row { grid-template-columns:34px 54px minmax(0,1fr) 90px 34px 52px 80px; gap:18px; min-height:94px; padding:19px 0; }
+  .app-shell .full-content .detailed-tracks .track-table-head { grid-template-columns:34px 54px minmax(0,1fr) 90px 34px 52px 80px; padding:0 0 14px; gap:18px; }
+  .app-shell .full-content .detailed-tracks .album-cover { width:54px; height:54px; }
+}
+@media(max-width:600px) {
+  .app-shell .detailed-tracks .track-row { grid-template-columns:25px 36px minmax(0,1fr) 48px 40px 20px; gap:6px; padding:14px 0; min-height:76px; }
+  .app-shell .detailed-tracks .track-table-head { grid-template-columns:25px 36px minmax(0,1fr) 48px 40px 20px; gap:6px; padding:0 0 12px; font-size:9px; letter-spacing:0; }
+  .app-shell .detailed-tracks .track-table-head > span:nth-child(4),.app-shell .detailed-tracks .track-duration { display:none; }
+  .app-shell .detailed-tracks .album-cover { width:36px; height:36px; }
+  .app-shell .detailed-tracks .track-rank { font-size:10px; }
+  .app-shell .detailed-tracks .track-title strong { font-size:12px; line-height:1.5; }
+  .app-shell .detailed-tracks .track-title > span { font-size:10px; }
+  .app-shell .detailed-tracks .track-duration { font-size:10px; }
+  .app-shell .detailed-tracks .track-count { font-size:13px; }
+  .detailed-tracks .track-platforms { flex-wrap:wrap; }
+  .detailed-tracks .source-badge,.detailed-tracks .music-platform-icon { width:18px!important; height:18px!important; }
+}
+@media (hover:none),(pointer:coarse),(max-width:600px) { .hint-pointer{display:none;} .hint-touch{display:inline;} }

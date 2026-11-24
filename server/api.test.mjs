@@ -63,14 +63,68 @@ async function withServer(t, overrides = {}, config = {}) {
   return { call, base, initial, cookie };
 }
 
-async function connect(call) {
+async function connect(call, provider = "netease") {
   const qr = await (
-    await call("/api/auth/netease/qr", { method: "POST" })
+    await call(`/api/auth/${provider}/qr`, { method: "POST" })
   ).json();
-  const result = await (await call(`/api/auth/netease/qr/${qr.id}`)).json();
+  const result = await (await call(`/api/auth/${provider}/qr/${qr.id}`)).json();
   assert.equal(result.state, "connected");
   return qr;
 }
+
+test("QQ history month discovery requires this browser's QQ connection and is rate limited", async (t) => {
+  let reads = 0;
+  const directory = { provider: "qq", months: ["2026-10"], source: "qq-listening-report.availableDates", rangeVerified: true, scope: "currently-readable" };
+  const { call, base } = await withServer(t, {
+    configured: { netease: true, qq: true },
+    qqHistoryMonths: async credential => {
+      reads++;
+      assert.equal(credential.secret, "sensitive-music-cookie");
+      return directory;
+    },
+  });
+  assert.equal((await call("/api/history/qq/months")).status, 401);
+  await connect(call, "qq");
+  assert.equal((await fetch(`${base}/api/history/qq/months`)).status, 401);
+  for (let index = 0; index < 10; index++) {
+    const response = await call("/api/history/qq/months");
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), directory);
+  }
+  const limited = await call("/api/history/qq/months");
+  assert.equal(limited.status, 429);
+  assert.equal((await limited.json()).error.code, "RATE_LIMITED");
+  assert.equal(reads, 10);
+});
+
+test("QQ history directory failures remain explicit errors rather than empty successful imports", async (t) => {
+  const { call } = await withServer(t, {
+    configured: { netease: true, qq: true },
+    qqHistoryMonths: async () => { throw new ApiError(502, "HISTORY_DIRECTORY_UNAVAILABLE", "目录暂不可用。"); },
+  });
+  await connect(call, "qq");
+  const response = await call("/api/history/qq/months");
+  assert.equal(response.status, 502);
+  assert.deepEqual(await response.json(), { error: { code: "HISTORY_DIRECTORY_UNAVAILABLE", message: "目录暂不可用。" } });
+});
+
+test("QQ history discovery cannot finish into a disconnected or replaced account", async (t) => {
+  let release, notify;
+  const started = new Promise(resolve => { notify = resolve; });
+  const pending = new Promise(resolve => { release = resolve; });
+  const { call } = await withServer(t, {
+    configured: { netease: true, qq: true },
+    qqHistoryMonths: async () => { notify(); return pending; },
+  });
+  await connect(call, "qq");
+  const request = call("/api/history/qq/months");
+  await started;
+  assert.equal((await call("/api/connections/qq", { method: "DELETE" })).status, 200);
+  release({ provider: "qq", months: ["2026-10"] });
+  const response = await request;
+  assert.equal(response.status, 409);
+  assert.equal((await response.json()).error.code, "CONNECTION_CHANGED");
+});
 
 test("calendar periods are Shanghai dates and invalid months fail", () => {
   assert.deepEqual(monthPeriod("2024-02"), {
@@ -174,6 +228,47 @@ test("QR login is scoped to browser session and never returns music credentials"
   assert.equal(connections.providers[0].connected, true);
 });
 
+test("QQ mobile authorization shares the QR session, conservative expiry and original polling key", async t => {
+  const deadline = Date.now() + 90_000;
+  const { call, base } = await withServer(t, {
+    configured: { netease: true, qq: true },
+    createQr: async () => ({ key: "original-qr-key", qrImage: tinyPng, expiresAt: deadline,
+      mobileAuth: { status: "available", kind: "app-authorization", url: "https://music.qq.com/unilink/download.html?scheme=synthetic", verification: "device-test-required" } }),
+    checkQr: async (provider, key) => {
+      assert.equal(provider, "qq"); assert.equal(key, "original-qr-key");
+      return { state: "waiting" };
+    },
+  });
+  const response = await call("/api/auth/qq/qr", { method: "POST" });
+  const qr = await response.json();
+  assert.equal(qr.expiresAt, deadline);
+  assert.equal(qr.mobileAuth.expiresAt, deadline);
+  assert.equal(qr.mobileAuth.verification, "device-test-required");
+  assert.equal(JSON.stringify(qr).includes("original-qr-key"), false);
+  assert.equal((await fetch(`${base}/api/auth/qq/qr/${qr.id}`)).status, 404);
+  assert.equal((await (await call(`/api/auth/qq/qr/${qr.id}`)).json()).state, "waiting");
+  await call("/api/connections/qq", { method: "DELETE" });
+  assert.equal((await call(`/api/auth/qq/qr/${qr.id}`)).status, 404);
+});
+
+test("expired QQ launch links expose the same expired deadline and cannot poll as waiting", async t => {
+  const deadline = Date.now() - 1000;
+  let checks = 0;
+  const { call } = await withServer(t, {
+    configured: { netease: true, qq: true },
+    createQr: async () => ({ key: "expired-fixture", qrImage: tinyPng, expiresAt: deadline,
+      mobileAuth: { status: "unavailable", kind: "app-authorization", code: "MOBILE_AUTH_TIMEOUT", verification: "device-test-required" } }),
+    checkQr: async () => { checks++; return { state: "waiting" }; },
+  });
+  const response = await call("/api/auth/qq/qr", { method: "POST" });
+  assert.equal(response.status, 200, "mobile parsing failures do not reject a QR response");
+  const qr = await response.json();
+  assert.equal(qr.expiresAt, deadline);
+  assert.equal(qr.mobileAuth.expiresAt, deadline);
+  assert.equal((await (await call(`/api/auth/qq/qr/${qr.id}`)).json()).state, "expired");
+  assert.equal(checks, 0);
+});
+
 test("disconnect removes credentials, reports, and pending login keys", async (t) => {
   const { call } = await withServer(t);
   const qr = await connect(call);
@@ -206,6 +301,175 @@ test("reports cache per session and preserve missing actual duration", async (t)
   await call("/api/report?month=2026-10");
   assert.equal(requests, 1);
   assert.equal((await fetch(`${base}/api/report?month=2026-10`)).status, 401);
+});
+
+test("a failed report is retried immediately and a year of months fits the rate limit", async t => {
+  let requests = 0;
+  const { call } = await withServer(t, {
+    report: async (id, credential, month) => {
+      requests++;
+      return { platform: { id, period: monthPeriod(month), tracks: [] },
+        issues: requests === 1 ? [{ provider: id, code: "UPSTREAM_TIMEOUT", message: "timeout" }] : [] };
+    },
+  });
+  await connect(call);
+  await call("/api/report?month=2026-01");
+  await call("/api/report?month=2026-01");
+  assert.equal(requests, 2, "partial upstream failures must not become cached empty results");
+  for (let month = 2; month <= 12; month++) {
+    assert.equal((await call(`/api/report?month=2026-${String(month).padStart(2, "0")}`)).status, 200);
+  }
+});
+
+test("history API imports discovered months, exposes reports progressively, and clears them on disconnect", async t => {
+  let durationCalls = 0;
+  const { call } = await withServer(t, {
+    history: async () => ({ months: ["2026-09", "2026-10"], source: "timedetail", rangeVerified: false, years: [2026] }),
+    report: async (id, credential, month) => ({ platform: { id, period: monthPeriod(month), rankingPeriod: monthPeriod(month),
+      tracks: [{ id: "fixture", title: "Fixture", artist: "Fixture", count: 2, genres: [] }], listenSeconds: null,
+      durationKind: "unknown", coverageComplete: false, countKind: "plays", countDefinition: null, rankCoverage: "top" },
+      issues: [{provider: id, code: "DURATION_MAPPING_REQUIRED", message: "duration unknown"}] }),
+    neteaseDuration: async () => { durationCalls++; return {listenSeconds: 3600, durationKind: "actual-total", coverageComplete: true}; },
+  });
+  assert.equal((await call("/api/history/netease", {method: "POST"})).status, 401);
+  await connect(call);
+  assert.equal((await call("/api/history/netease", {method: "POST"})).status, 200);
+  let job;
+  for (let attempt = 0; attempt < 30; attempt++) {
+    job = (await (await call("/api/history/netease")).json()).job;
+    if (job.state === "complete") break;
+    await new Promise(resolve => setTimeout(resolve, 5));
+  }
+  assert.equal(job.state, "complete"); assert.equal(job.succeeded, 2);
+  const raw = await (await call("/api/history/netease/reports")).text();
+  assert.equal(raw.includes("sensitive-music-cookie"), false);
+  const result = JSON.parse(raw);
+  assert.deepEqual(result.months, ["2026-09", "2026-10"]);
+  assert.equal(result.inputs.length, 2); assert.equal(result.issues.length, 2);
+  assert.equal((await call("/api/history/netease", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({refreshDuration: true})})).status, 200);
+  for (let attempt = 0; attempt < 30; attempt++) {
+    job = (await (await call("/api/history/netease")).json()).job;
+    if (job.state === "complete") break;
+    await new Promise(resolve => setTimeout(resolve, 5));
+  }
+  assert.equal(durationCalls, 2);
+  const refreshed = await (await call("/api/history/netease/reports")).json();
+  assert.equal(refreshed.inputs.every(input => input.platforms[0].listenSeconds === 3600), true);
+  assert.equal(refreshed.inputs.every(input => input.platforms[0].tracks[0].id === "fixture"), true);
+  assert.equal(refreshed.issues.length, 0);
+  await call("/api/connections/netease", {method: "DELETE"});
+  assert.deepEqual((await (await call("/api/history/netease/reports")).json()).inputs, []);
+});
+
+test("metadata endpoint caps work and strips unrecognized browser fields", async t => {
+  let seen;
+  const {call} = await withServer(t, {metadata: async tracks => {seen = tracks; return {items: []};}});
+  const track = {provider: "netease", id: "123", title: "Fixture", artist: "Fixture", arbitrary: "untrusted"};
+  const send = tracks => call("/api/metadata", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({tracks})});
+  assert.equal((await send(Array(21).fill(track))).status, 400);
+  assert.equal((await send([track])).status, 200);
+  assert.equal("arbitrary" in seen[0], false);
+});
+
+test("trusted saved months bypass upstream reads and both report APIs apply the latest local metadata", async t => {
+  let requests = 0;
+  let genre = "Pop";
+  const {call} = await withServer(t, {
+    history: async () => ({months: ["2026-10", "2026-09"], source: "timedetail", rangeVerified: false, years: [2026]}),
+    report: async (id, _credential, month) => {
+      requests++;
+      return {platform: {id, period: monthPeriod(month), rankingPeriod: monthPeriod(month),
+        tracks: [{id: "fixture", title: "Fixture", artist: "Fixture", count: 23, genres: []}],
+        listenSeconds: month === "2026-10" ? 3600 : null, durationKind: month === "2026-10" ? "actual-total" : "unknown",
+        coverageComplete: month === "2026-10", countKind: "plays", countDefinition: null, rankCoverage: "top"},
+        issues: month === "2026-10" ? [] : [{provider: id, code: "DURATION_MAPPING_REQUIRED", message: "unknown duration"}]};
+    },
+    cachedMetadata: (_provider, tracks) => tracks.map(track => ({...track, artworkUrl: "https://p1.music.126.net/fixture.jpg", durationSeconds: 240, genres: [genre]})),
+  });
+  await connect(call);
+  await call("/api/history/netease", {method: "POST"});
+  for (let attempt = 0; attempt < 30; attempt++) {
+    if ((await (await call("/api/history/netease")).json()).job.state === "complete") break;
+    await new Promise(resolve => setTimeout(resolve, 5));
+  }
+  const importedRequests = requests;
+  const first = await (await call("/api/report?month=2026-10")).json();
+  assert.equal(requests, importedRequests, "trusted history must never refetch the month");
+  assert.equal(first.input.platforms[0].listenSeconds, 3600);
+  assert.equal(first.input.platforms[0].tracks[0].durationSeconds, 240);
+  assert.equal(first.input.platforms[0].tracks[0].count, 23);
+  genre = "Rock";
+  const repeat = await (await call("/api/report?month=2026-10")).json();
+  assert.deepEqual(repeat.input.platforms[0].tracks[0].genres, ["Rock"], "metadata is refreshed locally even on a response cache hit");
+  const saved = await (await call("/api/history/netease/reports")).json();
+  assert.equal(saved.inputs.every(input => input.platforms[0].tracks[0].artworkUrl === "https://p1.music.126.net/fixture.jpg"), true);
+  assert.equal(saved.inputs.every(input => input.platforms[0].tracks[0].genres[0] === "Rock"), true);
+  assert.equal(requests, importedRequests, "reading archives and cached metadata does not hit music services");
+  await call("/api/report?month=2026-09");
+  assert.equal(requests, importedRequests + 1, "an incomplete saved report remains eligible for a real retry");
+});
+
+test("profile enrichment returns only display fields and is deduplicated", async t => {
+  let profiles = 0;
+  const { call } = await withServer(t, {
+    account: async () => {
+      profiles++;
+      return { nickname: "真实平台昵称", avatarUrl: "http://p1.music.126.net/avatar.jpg", userId: "private-account-id", cookie: "private-profile-cookie" };
+    },
+  });
+  await connect(call);
+  const response = await (await call("/api/connections")).text();
+  const provider = JSON.parse(response).providers[0];
+  assert.equal(provider.connected, true);
+  assert.deepEqual(provider.account, { nickname: "真实平台昵称", avatarUrl: "https://p1.music.126.net/avatar.jpg" });
+  assert.equal(response.includes("private-"), false);
+  await call("/api/connections");
+  assert.equal(profiles, 1);
+});
+
+test("profile lookup failure cannot block confirmed QR login or clear the connection", async t => {
+  let profiles = 0;
+  const { call } = await withServer(t, {
+    account: async () => { profiles++; throw new ApiError(504, "UPSTREAM_TIMEOUT", "timeout"); },
+  });
+  await connect(call);
+  assert.equal(profiles, 0, "profile is not part of the critical login path");
+  const response = await call("/api/connections");
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).providers[0].connected, true);
+});
+
+test("an in-flight profile does not resurrect an account after disconnect", async t => {
+  let release, started;
+  const pending = new Promise(resolve => { release = resolve; });
+  const notified = new Promise(resolve => { started = resolve; });
+  const { call } = await withServer(t, {
+    account: async () => { started(); await pending; return { nickname: "previous-account" }; },
+  });
+  await connect(call);
+  const loading = call("/api/connections");
+  await notified;
+  await call("/api/connections/netease", { method: "DELETE" });
+  release();
+  const response = await (await loading).json();
+  assert.equal(response.providers[0].connected, false);
+  assert.equal(response.providers[0].account, null);
+});
+
+test("NetEase and QQ profile parsing uses documented safe nickname fields", async () => {
+  const seen = [];
+  const adapters = createAdapters({ neteaseBase: "http://localhost:3001", qqBase: "http://localhost:3201" }, async (url, init) => {
+    seen.push({ path: url.pathname, headers: init.headers });
+    return new Response(JSON.stringify(url.pathname === "/user/account"
+      ? { code: 200, profile: { nickname: "网易测试", avatarUrl: "javascript:alert(1)", userId: 42 } }
+      : { code: 200, data: { profile: { nick: "QQ测试", avatarUrl: "https://y.gtimg.cn/avatar.jpg", musicid: 42 } } }));
+  });
+  const credential = { kind: "gateway", secret: "fixture-credential" };
+  assert.deepEqual(await adapters.account("netease", credential), { nickname: "网易测试" });
+  assert.deepEqual(await adapters.account("qq", credential), { nickname: "QQ测试", avatarUrl: "https://y.gtimg.cn/avatar.jpg" });
+  assert.equal(seen[0].headers["x-apicache-bypass"], "1");
+  assert.equal(seen[1].headers["X-QQ-Session"], "fixture-credential");
+  assert.deepEqual(await adapters.account("apple", { kind: "musickit" }), { nickname: "Apple Music 账号" });
 });
 
 test("disconnect while a report is loading cannot cache or return the previous account result", async (t) => {

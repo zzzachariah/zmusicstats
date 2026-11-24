@@ -1,0 +1,144 @@
+.ts-scene { --ts-copper:#cf845f; --ts-sage:#b8c5b2; --ts-gold:#d2b78f; --ts-night:#151914; stroke-linecap:round; stroke-linejoin:round; }
+.ts-orbit,.ts-axis,.ts-orbit-faint { stroke:currentColor; stroke-width:.8; fill:none; opacity:.34; }
+.ts-orbit { stroke-dasharray:1 3; }
+.ts-orbit-faint { opacity:.13; }
+.ts-axis { stroke-dasharray:3 4; }
+.ts-earth { fill:#253b35; stroke:var(--ts-sage); stroke-width:.9; }
+.ts-earth-grid { fill:none; stroke:var(--ts-sage); stroke-width:.65; opacity:.35; }
+.ts-earth-shine { fill:none; stroke:var(--ts-sage); stroke-width:2; opacity:.7; }
+.ts-land { fill:var(--ts-sage); opacity:.65; }
+.ts-sun,.ts-flower-heart,.ts-label,.ts-person-head { fill:var(--ts-copper); }
+.ts-sun-halo { fill:var(--ts-copper); opacity:.08; }
+.ts-sun-rays { fill:none; stroke:var(--ts-copper); stroke-width:1; opacity:.55; }
+.ts-light-path { fill:none; stroke:var(--ts-gold); stroke-width:.7; opacity:.24; }
+.ts-light-dot,.ts-star,.ts-distant-star { fill:var(--ts-gold); }
+.ts-light-tail { stroke:var(--ts-gold); stroke-width:1.2; opacity:.5; }
+.ts-photon { animation:ts-light-journey 1.6s ease-in-out 3; }
+.ts-globe-turn { animation:ts-globe-rotate 4.6s ease-in-out 1; }
+.ts-spin-arrow { fill:none; stroke:var(--ts-gold); stroke-width:1; opacity:.65; }
+.ts-planet-orbit,.ts-satellite-orbit,.ts-moon-journey { transform-origin:50px 50px; }
+.ts-planet-orbit { animation:ts-orbital-turn 4.8s cubic-bezier(.3,.1,.3,1) 1; }
+.ts-moon-journey { animation:ts-lunar-turn 4.8s ease-in-out 1; }
+.ts-satellite-orbit { animation:ts-orbital-turn 4.2s ease-in-out 1; }
+.ts-moon { fill:#d8d1b8; }
+.ts-crater { fill:#817f70; opacity:.27; }
+.ts-moon-outline { stroke:var(--ts-gold); stroke-width:.7; opacity:.4; }
+.ts-phase-shadow { fill:var(--ts-night); transform:translateX(13px); animation:ts-lunar-phase 4.8s ease-in-out 1; }
+.ts-phase-marks { stroke:var(--ts-gold); stroke-width:1.5; opacity:.4; }
+.ts-satellite-wire,.ts-panel-grid { stroke:var(--ts-gold); stroke-width:.8; }
+.ts-solar-panel { fill:#263831; stroke:var(--ts-sage); stroke-width:.8; }
+.ts-satellite-body { fill:var(--ts-gold); }
+.ts-panel-grid { opacity:.5; }
+.ts-record { fill:var(--ts-night); stroke:#b8c5b24d; stroke-width:1; }
+.ts-groove { stroke:var(--ts-sage); stroke-width:.55; opacity:.23; }
+.ts-vinyl-turn { transform-origin:47px 51px; animation:ts-orbital-turn 4.6s linear 1; }
+.ts-vinyl-glint { stroke:var(--ts-gold); stroke-width:2; opacity:.75; }
+.ts-record-label { fill:#b34c43; }
+.ts-record-z { fill:#f1ddba; }
+.ts-tonearm { stroke:var(--ts-sage); stroke-width:2; }
+.ts-tonearm-pivot { fill:var(--ts-night); stroke:var(--ts-sage); stroke-width:1; }
+.ts-cartridge { fill:var(--ts-gold); }
+.ts-ground,.ts-path-dots,.ts-breeze { stroke:var(--ts-gold); stroke-width:1; opacity:.35; }
+.ts-path-dots { opacity:.18; }
+.ts-person { fill:none; stroke:var(--ts-sage); stroke-width:2.7; }
+.ts-walker { animation:ts-person-step 1.2s ease-in-out 4; }
+.ts-walk-arm-a,.ts-walk-arm-b { transform-origin:49px 38px; }
+.ts-walk-leg-a,.ts-walk-leg-b { transform-origin:50px 57px; }
+.ts-walk-arm-a,.ts-walk-leg-b { animation:ts-limb-forward 1.2s ease-in-out 4; }
+.ts-walk-arm-b,.ts-walk-leg-a { animation:ts-limb-back 1.2s ease-in-out 4; }
+.ts-stage { fill:var(--ts-sage); opacity:.09; }
+.ts-dancer { transform-origin:50px 79px; animation:ts-person-dance 1.2s ease-in-out 4; }
+.ts-dance-arm-a,.ts-dance-arm-b { transform-origin:50px 38px; }
+.ts-dance-arm-a { animation:ts-limb-forward 1.2s ease-in-out 4; }
+.ts-dance-arm-b { animation:ts-limb-back 1.2s ease-in-out 4; }
+.ts-music-note { fill:none; stroke:var(--ts-gold); stroke-width:1.2; }
+.ts-stem { fill:none; stroke:var(--ts-sage); stroke-width:1.2; opacity:.6; }
+.ts-petal { fill:#b8c5b20a; stroke:var(--ts-sage); stroke-width:.8; }
+.ts-bloom { transform-origin:50px 46px; animation:ts-flower-open 4.6s ease-in-out 1; }
+.ts-reel,.ts-projector { fill:var(--ts-night); stroke:var(--ts-sage); stroke-width:1.1; }
+.ts-reel-hole { fill:var(--ts-sage); opacity:.4; }
+.ts-pin,.ts-projector-lens { fill:var(--ts-gold); }
+.ts-film-reel { animation:ts-orbital-turn 4.8s ease-in-out 1; }
+.ts-projector-detail { stroke:var(--ts-sage); stroke-width:1; opacity:.7; }
+.ts-projector-beam { fill:var(--ts-gold); opacity:.12; animation:ts-cinema-light 2.4s ease-in-out 2; }
+.ts-window-glass { fill:#b8c5b205; }
+.ts-window-frame { stroke:var(--ts-gold); stroke-width:1.2; }
+.ts-rain { stroke:var(--ts-sage); stroke-width:1.2; opacity:.65; }
+.ts-rain-a { animation:ts-rain-fall 1.6s linear 3; }
+.ts-rain-b { animation:ts-rain-near 2.4s linear 2; opacity:.35; }
+.ts-cup { fill:#b8c5b209; stroke:var(--ts-sage); stroke-width:1.3; }
+.ts-cup-handle,.ts-saucer { fill:none; stroke:var(--ts-sage); stroke-width:1.4; }
+.ts-tea { fill:#cf845f22; stroke:var(--ts-copper); stroke-width:.8; }
+.ts-steam { stroke:var(--ts-gold); stroke-width:1.15; opacity:.55; }
+.ts-steam-a,.ts-steam-c { animation:ts-tea-steam 2.4s ease-in-out 2; }
+.ts-steam-b { animation:ts-tea-steam 1.6s ease-in-out 3; }
+.ts-constellation { stroke:var(--ts-sage); stroke-width:.8; opacity:.25; }
+.ts-twinkle-a { animation:ts-stars-glow 2.4s ease-in-out 2; }
+.ts-twinkle-b { animation:ts-stars-soft 1.6s ease-in-out 3; }
+.ts-shooting-star { stroke:var(--ts-gold); stroke-width:1.2; opacity:0; animation:ts-star-trail 4.8s ease-out 1; }
+@keyframes ts-light-journey { 0% { transform:translateX(0); opacity:.1; } 20%,75% { opacity:1; } 100% { transform:translateX(38px); opacity:0; } }
+@keyframes ts-globe-rotate { 0%,100% { transform:translateX(0); } 45% { transform:translateX(22px); } 46% { opacity:0; } 47% { transform:translateX(-22px); opacity:0; } 52% { opacity:1; } }
+@keyframes ts-orbital-turn { from { transform:rotate(0); } to { transform:rotate(360deg); } }
+@keyframes ts-lunar-turn { 0% { transform:rotate(0) scaleX(1); } 50% { transform:rotate(180deg) scaleX(.9); } 100% { transform:rotate(360deg) scaleX(1); } }
+@keyframes ts-lunar-phase { 0%,100% { transform:translateX(13px); } 50% { transform:translateX(-13px); } }
+@keyframes ts-person-step { 0%,50%,100% { transform:translateY(0); } 25%,75% { transform:translateY(-2px); } }
+@keyframes ts-limb-forward { 0%,100% { transform:rotate(0); } 50% { transform:rotate(28deg); } }
+@keyframes ts-limb-back { 0%,100% { transform:rotate(0); } 50% { transform:rotate(-28deg); } }
+@keyframes ts-person-dance { 0%,100% { transform:rotate(0); } 25% { transform:rotate(7deg) translateY(-2px); } 65% { transform:rotate(-9deg) translateY(-1px); } }
+@keyframes ts-flower-open { 0% { transform:scale(.55) rotate(-16deg); } 60% { transform:scale(1.04) rotate(3deg); } 100% { transform:scale(1) rotate(0); } }
+@keyframes ts-cinema-light { 0%,100% { opacity:.12; } 50% { opacity:.22; } }
+@keyframes ts-rain-fall { 0% { transform:translate(3px,-14px); opacity:.1; } 30%,75% { opacity:.65; } 100% { transform:translate(-4px,18px); opacity:.1; } }
+@keyframes ts-rain-near { 0% { transform:translate(2px,-10px); opacity:.1; } 30%,75% { opacity:.4; } 100% { transform:translate(-3px,14px); opacity:.1; } }
+@keyframes ts-tea-steam { 0%,100% { transform:translateY(0); opacity:.3; } 65% { transform:translateY(-6px); opacity:.65; } }
+@keyframes ts-stars-glow { 0%,100% { opacity:.55; } 50% { opacity:1; } }
+@keyframes ts-stars-soft { 0%,100% { opacity:1; } 50% { opacity:.4; } }
+@keyframes ts-star-trail { 0%,20% { transform:translate(-12px,-7px); opacity:0; } 30% { opacity:.8; } 60%,100% { transform:translate(22px,13px); opacity:0; } }
+.ts-bird-trail,.ts-bee-trail { fill:none; stroke:var(--ts-gold); stroke-width:1; opacity:.3; }
+.ts-bee-trail { stroke-dasharray:2 4; }
+.ts-bird-body { fill:var(--ts-sage); }
+.ts-bird-head { fill:var(--ts-copper); }
+.ts-bird-wing { fill:#31463a; stroke:var(--ts-sage); stroke-width:.8; transform-origin:50px 50px; }
+.ts-bird-wing-back { opacity:.6; animation:ts-bird-flutter-back .8s ease-in-out 6; }
+.ts-bird-wing-front { animation:ts-bird-flutter .8s ease-in-out 6; }
+.ts-bird-beak { stroke:var(--ts-gold); stroke-width:1.4; }
+.ts-bird-hover,.ts-bee-hover { animation:ts-creature-hover 2.4s ease-in-out 2; }
+.ts-animal-eye { fill:var(--ts-night); }
+.ts-bee-wing { fill:#d2b78f15; stroke:var(--ts-gold); stroke-width:.8; transform-origin:52px 50px; }
+.ts-bee-wing-left { animation:ts-bee-flutter .6s ease-in-out 8; }
+.ts-bee-wing-right { animation:ts-bee-flutter-back .6s ease-in-out 8; }
+.ts-bee-body,.ts-bee-head { fill:var(--ts-gold); }
+.ts-bee-stripe { stroke:var(--ts-night); stroke-width:5; }
+.ts-bee-antenna { fill:none; stroke:var(--ts-gold); stroke-width:1.2; }
+.ts-sea-sun { fill:var(--ts-copper); opacity:.6; }
+.ts-wave-back { fill:#b8c5b21c; animation:ts-wave-drift 2.4s ease-in-out 2; }
+.ts-wave-front { fill:#344c40; stroke:var(--ts-sage); stroke-width:.9; animation:ts-wave-rise 2.4s ease-in-out 2; }
+.ts-wave-foam { fill:none; stroke:var(--ts-gold); stroke-width:1; opacity:.6; animation:ts-wave-rise 2.4s ease-in-out 2; }
+.ts-train-view { animation:ts-landscape-travel 4.8s linear 1 both; }
+.ts-train-hills { fill:#b8c5b21a; stroke:var(--ts-sage); stroke-width:.7; }
+.ts-train-fields { fill:none; stroke:var(--ts-gold); stroke-width:1; opacity:.45; }
+.ts-train-pole { fill:none; stroke:var(--ts-sage); stroke-width:1.6; }
+.ts-train-frame { fill:none; stroke:var(--ts-gold); stroke-width:1.1; opacity:.4; }
+.ts-train-sill { stroke:var(--ts-gold); stroke-width:2.6; }
+.ts-bicycle-wheel { fill:var(--ts-night); stroke:var(--ts-sage); stroke-width:1.1; }
+.ts-bicycle-spokes { fill:none; stroke:var(--ts-sage); stroke-width:.6; opacity:.4; animation:ts-orbital-turn 4.8s linear 1; }
+.ts-bicycle-frame { fill:none; stroke:var(--ts-copper); stroke-width:1.6; }
+.ts-bicycle-pedal { transform-origin:52px 65px; animation:ts-orbital-turn 2.4s linear 2; }
+.ts-cycle-crank { fill:none; stroke:var(--ts-gold); stroke-width:1.3; }
+.ts-cycle-rider { animation:ts-cycle-bob 1.2s ease-in-out 4; }
+.ts-book-cover { fill:#27372d; stroke:var(--ts-sage); stroke-width:1.2; }
+.ts-book-page { fill:#d2b78f16; stroke:var(--ts-gold); stroke-width:.8; }
+.ts-book-spine,.ts-book-lines { fill:none; stroke:var(--ts-gold); stroke-width:.7; opacity:.5; }
+.ts-book-turn { fill:#343d2e; stroke:var(--ts-gold); stroke-width:.8; transform-origin:50px 50px; animation:ts-page-turn 2.4s ease-in-out 2; }
+.ts-bookmark { fill:var(--ts-copper); opacity:.8; }
+@keyframes ts-bird-flutter { 0%,100% { transform:rotate(0); } 50% { transform:rotate(-32deg) scaleY(.75); } }
+@keyframes ts-bird-flutter-back { 0%,100% { transform:rotate(0); } 50% { transform:rotate(24deg); } }
+@keyframes ts-creature-hover { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-3px); } }
+@keyframes ts-bee-flutter { 0%,100% { transform:rotate(-34deg); } 50% { transform:rotate(-52deg) scaleY(.8); } }
+@keyframes ts-bee-flutter-back { 0%,100% { transform:rotate(30deg); } 50% { transform:rotate(50deg) scaleY(.8); } }
+@keyframes ts-wave-drift { 0%,100% { transform:translateX(0); } 50% { transform:translateX(-9px); } }
+@keyframes ts-wave-rise { 0%,100% { transform:translate(0,0); } 50% { transform:translate(4px,-4px); } }
+@keyframes ts-landscape-travel { from { transform:translateX(0); } to { transform:translateX(-30px); } }
+@keyframes ts-cycle-bob { 0%,100% { transform:translateY(0); } 50% { transform:translateY(1.5px); } }
+@keyframes ts-page-turn { 0%,100% { transform:scaleX(1); } 48% { transform:scaleX(.08); } 60% { transform:scaleX(.18); } }
+.ts-scene:not(.is-in-view) * { animation-play-state: paused; }
+@media (prefers-reduced-motion:reduce) { .ts-scene * { animation:none!important; } }

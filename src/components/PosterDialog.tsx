@@ -1,15 +1,20 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { Check, Download, LoaderCircle, Share2 } from "lucide-react";
 import { Modal } from "./Modal";
 import { copy, type Language } from "../lib/i18n";
 import type { MusicReport } from "../lib/report";
 import {
-  exportPoster,
   exportPosterSeries,
   downloadPoster,
+  planPosterExports,
+  parsePosterTrackLimit,
+  POSTER_MODULES,
+  selectPosterTracks,
   type PosterExport,
   type PosterFormat,
+  type PosterModule,
 } from "../lib/poster";
+import "./poster-options.css";
 
 export function PosterDialog({
   report,
@@ -25,29 +30,57 @@ export function PosterDialog({
   const t = copy[language];
   const [theme, setTheme] = useState<"ink" | "paper">("ink");
   const [format, setFormat] = useState<PosterFormat>("long");
+  const [modules, setModules] = useState<PosterModule[]>([...POSTER_MODULES]);
+  const [trackChoice, setTrackChoice] = useState<5 | 10 | 20 | "custom">(5);
+  const [customTrackLimit, setCustomTrackLimit] = useState("5");
+  const [tracksPerPage, setTracksPerPage] = useState<10 | 20 | 30>(20);
   const [results, setResults] = useState<PosterExport[]>([]);
   const [loading, setLoading] = useState(true);
+  const [progress, setProgress] = useState({ completed: 0, total: 0 });
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const generation = useRef<AbortController | null>(null);
+  const close = useCallback(() => { generation.current?.abort(); onClose(); }, [onClose]);
+  const customInputId = useId();
+  const availableTracks = useMemo(() => selectPosterTracks(report, Number.MAX_SAFE_INTEGER).length, [report]);
+  const trackLimit = trackChoice === "custom" ? parsePosterTrackLimit(customTrackLimit, availableTracks) : Math.min(trackChoice, availableTracks);
+  const invalidTrackLimit = modules.includes("tracks") && trackChoice === "custom" && trackLimit === null;
+  const trackLimitMessage = language === "zh"
+    ? `请输入 1 至 ${availableTracks} 之间的整数。`
+    : `Enter a whole number from 1 to ${availableTracks}.`;
+  const plannedCount = invalidTrackLimit ? 0 : planPosterExports(report, { language, theme, format, modules, trackLimit: trackLimit ?? 5, tracksPerPage }).length;
+  const changeOptions = (update: () => void) => {
+    generation.current?.abort();
+    setResults([]);
+    setLoading(true);
+    update();
+  };
   useEffect(() => {
+    const controller = new AbortController();
+    generation.current = controller;
     let cancelled = false;
     let current: PosterExport[] = [];
     setLoading(true);
     setFailed(false);
     setResults([]);
+    setProgress({ completed: 0, total: plannedCount });
+    if (invalidTrackLimit) {
+      setLoading(false);
+      return () => { cancelled = true; controller.abort(); };
+    }
     const generate = async () => {
       try {
-        current =
-          format === "cards"
-            ? await exportPosterSeries(report, { language, theme })
-            : [await exportPoster(report, { language, theme, format })];
+        current = await exportPosterSeries(report, { language, theme, format, modules, trackLimit: trackLimit ?? 5, tracksPerPage }, {
+          signal: controller.signal,
+          onProgress: (next) => { if (!cancelled) setProgress(next); },
+        });
         if (cancelled) {
           current.forEach((r) => URL.revokeObjectURL(r.url));
           return;
         }
         setResults(current);
       } catch {
-        if (!cancelled) setFailed(true);
+        if (!cancelled && !controller.signal.aborted) setFailed(true);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -55,10 +88,22 @@ export function PosterDialog({
     void generate();
     return () => {
       cancelled = true;
+      controller.abort();
       current.forEach((r) => URL.revokeObjectURL(r.url));
     };
-  }, [report, language, theme, format, attempt]);
+  }, [report, language, theme, format, modules, trackChoice, customTrackLimit, trackLimit, invalidTrackLimit, plannedCount, tracksPerPage, attempt]);
+  const canExport = !loading && !invalidTrackLimit && results.length > 0;
+  const fallbackCovers = results.reduce((count, result) => count + (result.artwork?.fallback ?? 0), 0);
+  const toggleModule = (module: PosterModule) => changeOptions(() => setModules((current) => current.includes(module)
+    ? current.filter((item) => item !== module) : [...current, module]));
+  const moduleLabels: Record<PosterModule, [string, string]> = {
+    summary: ["收听概览", "Listening summary"], platforms: ["音乐平台来源", "Platform sources"],
+    tracks: ["常听的旋律", "Frequent tracks"], genres: ["音乐底色", "Genre palette"],
+    persona: ["音乐画像", "Listening portrait"], overlap: ["跨平台共同歌曲", "Songs across platforms"],
+    metaphor: ["时间的另一种形状", "A time comparison"],
+  };
   const share = async () => {
+    if (!canExport) return;
     const files = results.map(
       (r) => new File([r.blob], r.filename, { type: "image/png" }),
     );
@@ -74,20 +119,20 @@ export function PosterDialog({
   const formats: { id: PosterFormat; title: string; note: string }[] =
     language === "zh"
       ? [
-          { id: "long", title: "完整长图", note: "时长、Top 10、曲风与洞察" },
-          { id: "cards", title: "系列卡片", note: "4 张，可以分开发送" },
+          { id: "long", title: "完整长图", note: "沿用报告布局，自选包含模块" },
+          { id: "cards", title: "系列卡片", note: "按所选内容分成独立卡片" },
           { id: "cover", title: "唱片封面", note: "一张精简的音乐名片" },
         ]
       : [
           {
             id: "long",
             title: "The full story",
-            note: "Time, top 10, genres & insights",
+            note: "Your report layout, with chosen sections",
           },
           {
             id: "cards",
             title: "A set of cards",
-            note: "4 images to share separately",
+            note: "Separate cards for selected sections",
           },
           {
             id: "cover",
@@ -96,6 +141,7 @@ export function PosterDialog({
           },
         ];
   const save = (r: PosterExport) => {
+    if (!canExport) return;
     downloadPoster(r);
     onToast(t.saved);
   };
@@ -104,15 +150,23 @@ export function PosterDialog({
       title={t.posterTitleModal}
       subtitle={t.posterSub}
       closeLabel={t.close}
-      onClose={onClose}
+      onClose={close}
       wide
     >
-      <div className="poster-layout">
+      <div className="poster-layout poster-dialog-layout">
         <div className="poster-preview" aria-live="polite" aria-busy={loading}>
-          {loading ? (
-            <div className="loading-state">
-              <LoaderCircle size={22} className="loading-spin" />
-              {t.generating}
+          {invalidTrackLimit ? (
+            <div className="empty-state poster-input-prompt"><p>{trackLimitMessage}</p><small>{language === "zh" ? "填写歌曲数量后，再生成预览。" : "The preview will update once the track count is valid."}</small></div>
+          ) : loading ? (
+            <div className="loading-state poster-generating" role="status">
+              <LoaderCircle size={25} className="loading-spin" aria-hidden="true" />
+              <span>{t.generating}</span>
+              <strong>{language === "zh" ? `已生成 ${progress.completed} / ${progress.total || plannedCount} 张` : `${progress.completed} / ${progress.total || plannedCount} images generated`}</strong>
+              <div className="poster-generation-meter" role="progressbar" aria-label={language === "zh" ? "海报生成进度" : "Poster generation progress"}
+                aria-valuemin={0} aria-valuemax={progress.total || plannedCount} aria-valuenow={progress.completed}>
+                <span style={{ width: `${Math.max(2, progress.completed / Math.max(1, progress.total || plannedCount) * 100)}%` }} />
+              </div>
+              <small>{language === "zh" ? "切换选项会停止上一组生成，关闭即可取消。" : "Changing options stops the previous batch. Close to cancel."}</small>
             </div>
           ) : failed ? (
             <div className="empty-state">
@@ -133,7 +187,7 @@ export function PosterDialog({
                 />
                 <div className="poster-metadata">
                   <span>
-                    PNG · {format === "long" ? "1080 × 2880" : "1080 × 1440"}
+                    PNG · {r.width} × {r.height}
                   </span>
                   <span>
                     {i + 1} / {results.length}
@@ -154,7 +208,7 @@ export function PosterDialog({
                   key={f.id}
                   className={format === f.id ? "active" : ""}
                   aria-pressed={format === f.id}
-                  onClick={() => setFormat(f.id)}
+                  onClick={() => { if (format !== f.id) changeOptions(() => setFormat(f.id)); }}
                 >
                   <span>
                     {f.title}
@@ -165,6 +219,45 @@ export function PosterDialog({
               ))}
             </div>
           </div>
+          <fieldset className="poster-module-options">
+            <legend className="option-label">{language === "zh" ? "包含内容" : "INCLUDE"}</legend>
+            {POSTER_MODULES.map((module) => <label key={module}>
+              <input type="checkbox" checked={modules.includes(module)} onChange={() => toggleModule(module)} />
+              <span>{moduleLabels[module][language === "zh" ? 0 : 1]}</span>
+            </label>)}
+          </fieldset>
+          {modules.includes("tracks") && <div className="poster-track-options">
+            <span className="option-label">{language === "zh" ? "歌曲范围" : "TRACK SELECTION"}</span>
+            <div className="segmented poster-track-presets">
+              {([5, 10, 20, "custom"] as const).map((choice) => <button key={choice} aria-pressed={trackChoice === choice} className={trackChoice === choice ? "active" : ""}
+                onClick={() => { if (trackChoice !== choice) changeOptions(() => {
+                  if (choice === "custom") setCustomTrackLimit(String(trackLimit || 5));
+                  setTrackChoice(choice);
+                }); }}>
+                {choice === "custom" ? (language === "zh" ? "自定义" : "Custom") : `Top ${choice}`}
+              </button>)}
+            </div>
+            {trackChoice === "custom" && <div className="poster-custom-count">
+              <label htmlFor={customInputId}>{language === "zh" ? "包含前多少首歌曲" : "Number of leading tracks"}</label>
+              <div className="poster-custom-input-row">
+                <input id={customInputId} type="number" inputMode="numeric" min={1} max={availableTracks} step={1} value={customTrackLimit}
+                  aria-invalid={invalidTrackLimit} aria-describedby={`${customInputId}-hint`}
+                  onChange={(event) => changeOptions(() => setCustomTrackLimit(event.target.value))} />
+                <span>{language === "zh" ? `首 / 共 ${availableTracks} 首` : `of ${availableTracks} tracks`}</span>
+              </div>
+              <small id={`${customInputId}-hint`} className={invalidTrackLimit ? "poster-input-error" : ""} role={invalidTrackLimit ? "alert" : undefined}>
+                {invalidTrackLimit ? trackLimitMessage : language === "zh" ? "只包含前面选定的歌曲，不会导出其余曲目。" : "Only the chosen leading tracks will be included."}
+              </small>
+            </div>}
+            {trackLimit !== null && trackLimit > 10 && <label className="poster-page-size">{language === "zh" ? "每张歌曲页" : "Tracks per page"}
+              <select value={tracksPerPage} onChange={(event) => changeOptions(() => setTracksPerPage(Number(event.target.value) as 10 | 20 | 30))}>
+                {[10, 20, 30].map((size) => <option value={size} key={size}>{size} {language === "zh" ? "首" : "tracks"}</option>)}
+              </select>
+            </label>}
+          </div>}
+          <p className="poster-export-count" role="status">{invalidTrackLimit ? (language === "zh" ? "等待填写有效歌曲数量" : "Waiting for a valid track count") : language === "zh" ? `将生成 ${plannedCount} 张图片` : `${plannedCount} ${plannedCount === 1 ? "image" : "images"} will be generated`}
+            {!invalidTrackLimit && modules.includes("tracks") && <small>{language === "zh" ? `包含前 ${trackLimit} 首歌曲${trackLimit !== null && trackLimit > tracksPerPage ? "，连续编号并分张保存" : ""}。` : `Includes the first ${trackLimit} tracks${trackLimit !== null && trackLimit > tracksPerPage ? ", numbered consecutively across pages" : ""}.`}</small>}
+          </p>
           <div>
             <span className="option-label">
               {language === "zh" ? "封面配色" : "COLOURWAY"}
@@ -173,24 +266,24 @@ export function PosterDialog({
               <button
                 className={theme === "ink" ? "active" : ""}
                 aria-pressed={theme === "ink"}
-                onClick={() => setTheme("ink")}
+                onClick={() => { if (theme !== "ink") changeOptions(() => setTheme("ink")); }}
               >
                 {t.posterInk}
               </button>
               <button
                 className={theme === "paper" ? "active" : ""}
                 aria-pressed={theme === "paper"}
-                onClick={() => setTheme("paper")}
+                onClick={() => { if (theme !== "paper") changeOptions(() => setTheme("paper")); }}
               >
                 {t.posterPaper}
               </button>
             </div>
           </div>
           <div className="poster-actions">
-            {format !== "cards" && (
+            {results.length <= 1 && (
               <button
                 className="button primary"
-                disabled={loading || !results.length}
+                disabled={!canExport}
                 onClick={() => results[0] && save(results[0])}
               >
                 <Download size={16} />
@@ -198,20 +291,21 @@ export function PosterDialog({
               </button>
             )}
             <button
-              className={`button ${format === "cards" ? "primary" : "secondary"}`}
-              disabled={loading || !results.length}
+              className={`button ${results.length > 1 ? "primary" : "secondary"}`}
+              disabled={!canExport}
               onClick={() => void share()}
             >
               <Share2 size={16} />
               {t.shareImage}
             </button>
           </div>
-          {format === "cards" && results.length > 0 && (
+          {results.length > 1 && (
             <div className="poster-download-list">
               {results.map((r, i) => (
                 <button
                   key={r.url}
                   className="small-button"
+                  disabled={!canExport}
                   onClick={() => save(r)}
                 >
                   <Download size={14} />
@@ -225,6 +319,7 @@ export function PosterDialog({
           <p className="scope-note">
             {report.mode === "demo" ? t.currentSample : t.sourceData}
             <br />
+            {canExport && fallbackCovers > 0 && <>{language === "zh" ? `${fallbackCovers} 处专辑封面未能读取，已用唱片图案代替。` : `${fallbackCovers} album covers were unavailable and use a record illustration.`}<br /></>}
             {language === "zh"
               ? "手机也可以长按预览图保存。"
               : "On your phone, touch and hold an image to save it."}

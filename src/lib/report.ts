@@ -1,3 +1,5 @@
+import { genreDisplayLabels } from "./genre-labels.ts";
+
 export type PlatformId = "netease" | "qq" | "apple";
 export type ReportMode = "demo" | "live";
 export type Locale = "zh" | "en";
@@ -17,6 +19,17 @@ export interface TrackInput {
   title: string;
   artist: string;
   album?: string;
+  artworkUrl?: string;
+  genreSource?: string;
+  /** A completed metadata lookup can still have no verifiable genre tag. */
+  genreLookupComplete?: boolean;
+  /** Recording length. Any plays × length estimate must stay separate from actual listenSeconds. */
+  durationSeconds?: number;
+  /** Verified cumulative listening time for this track and source period only. */
+  listenSeconds?: number;
+  /** Earliest/latest observed month in the loaded monthly rankings, not the first/last actual play. */
+  firstSeenMonth?: string;
+  lastSeenMonth?: string;
   count: number | null;
   genres: string[];
   coverIndex?: number;
@@ -53,8 +66,10 @@ export interface RankedTrack extends TrackInput {
 }
 
 export interface GenreSlice {
+  /** Stable genre identity; translated display names must never replace this key. */
   name: string;
   nameZh: string;
+  nameEn?: string;
   weight: number;
   percentage: number;
   color: string;
@@ -79,6 +94,8 @@ export interface PlatformReport {
   hours: number | null;
   durationAvailable: boolean;
   rankingMatchesPeriod: boolean;
+  /** Multi-month reports can contain only the returned months within a selection. */
+  rankingCoverage?: "complete" | "partial" | "undated";
   tracks: RankedTrack[];
   genres: GenreSlice[];
   genreScope: Localized;
@@ -129,18 +146,6 @@ const GENRE_COLORS = [
   "#9AAFC7",
   "#C9BCA4",
 ];
-const GENRE_ZH: Record<string, string> = {
-  "R&B": "R&B",
-  Pop: "流行",
-  Indie: "独立",
-  Jazz: "爵士",
-  Rock: "摇滚",
-  Electronic: "电子",
-  Folk: "民谣",
-  Soul: "灵魂乐",
-  "Hip-Hop": "嘻哈",
-  Unknown: "未识别",
-};
 const GENRE_ALIASES: Record<string, string> = {
   "r&b": "R&B",
   pop: "Pop",
@@ -378,7 +383,8 @@ export function calculateGenres(
     .sort((a, b) => b[1] - a[1])
     .map(([name, weight], index) => ({
       name,
-      nameZh: GENRE_ZH[name] ?? name,
+      nameZh: genreDisplayLabels(name).zh,
+      nameEn: genreDisplayLabels(name).en,
       weight,
       percentage: (weight / total) * 100,
       color:
@@ -560,11 +566,11 @@ export function buildReport(input: ReportInput): MusicReport {
       id: "leading-genre",
       title: {
         zh: `${leadingGenre.nameZh}，是这一期的底色。`,
-        en: `${leadingGenre.name} sets the tone.`,
+        en: `${leadingGenre.nameEn ?? leadingGenre.name} sets the tone.`,
       },
       body: {
         zh: `在已获取的歌曲样本中，${leadingGenre.nameZh} 占加权曲风分布的 ${Math.round(leadingGenre.percentage)}%。这些熟悉的声音，组成了这一期的音乐底色。`,
-        en: `${leadingGenre.name} accounts for ${Math.round(leadingGenre.percentage)}% of the weighted genre sample. The familiar sounds that colour this chapter of your listening.`,
+        en: `${leadingGenre.nameEn ?? leadingGenre.name} accounts for ${Math.round(leadingGenre.percentage)}% of the weighted genre sample. The familiar sounds that colour this chapter of your listening.`,
       },
     });
   if (overlappingTracks.length > 0)

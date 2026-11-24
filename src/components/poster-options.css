@@ -1,0 +1,60 @@
+.poster-module-options { border: 0; padding: 0; margin: 0; min-width: 0; }
+.poster-module-options legend { padding: 0; margin-bottom: 12px; }
+.poster-module-options label { display: flex; align-items: center; gap: 10px; min-height: 37px; color: var(--paper); font: 400 12px/1.5 "Manrope Variable", "Noto Sans SC Variable", sans-serif; cursor: pointer; }
+.poster-module-options input { width: 15px; height: 15px; margin: 0; accent-color: var(--accent, #d57757); cursor: pointer; }
+.poster-module-options input:focus-visible { outline: 2px solid var(--accent, #d57757); outline-offset: 4px; }
+.poster-track-options { display: grid; gap: 10px; }
+.poster-dialog-layout.poster-layout { grid-template-columns: minmax(0, 1fr) minmax(230px, 270px); gap: 30px; }
+.poster-dialog-layout > .poster-preview { min-width: 0; gap: 24px; padding: 18px; }
+.poster-dialog-layout > .poster-options { min-width: 0; display: flex; flex-direction: column; gap: 28px; }
+.poster-dialog-layout .poster-options > * { min-width: 0; margin-block: 0; }
+.poster-dialog-layout .poster-options .option-label { margin-bottom: 12px; }
+.poster-dialog-layout .poster-module-options label { min-height: 43px; gap: 12px; }
+.poster-dialog-layout .poster-track-options { gap: 14px; }
+.poster-dialog-layout .poster-track-options > .option-label { margin-bottom: 0; }
+.poster-dialog-layout .poster-track-presets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; padding: 5px; }
+.poster-dialog-layout .poster-track-presets button { min-height: 42px; padding: 10px 6px; font-size: 12px; }
+.poster-custom-count { display: grid; gap: 10px; }
+.poster-custom-count > label { font-size: 12px; color: var(--paper); }
+.poster-custom-input-row { display: flex; align-items: center; gap: 12px; }
+.poster-custom-input-row input { width: 88px; min-width: 0; min-height: 44px; border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; background: var(--surface, #1a1e1b); color: var(--paper); font: 500 16px/1.4 "Manrope Variable", sans-serif; }
+.poster-custom-input-row input:focus-visible { outline: 2px solid var(--accent, #d57757); outline-offset: 2px; }
+.poster-custom-input-row input[aria-invalid="true"] { border-color: var(--accent, #d57757); }
+.poster-custom-input-row > span { color: var(--muted); font-size: 11px; line-height: 1.6; }
+.poster-custom-count > small { color: var(--muted); font-size: 11px; line-height: 1.7; }
+.poster-custom-count > .poster-input-error { color: var(--accent, #d57757); }
+.poster-input-prompt { padding: 40px 20px; text-align: center; }
+.poster-input-prompt small { color: var(--muted); line-height: 1.8; }
+.poster-dialog-layout .poster-page-size { min-height: 48px; padding-top: 4px; }
+.poster-dialog-layout .poster-page-size select { min-height: 44px; padding: 10px 12px; }
+.poster-dialog-layout .poster-export-count { padding: 14px 16px; border: 1px solid var(--line); border-radius: 6px; }
+.poster-dialog-layout .poster-actions { gap: 12px; }
+.poster-dialog-layout .poster-actions .button, .poster-dialog-layout .poster-download-list button { min-height: 46px; }
+.poster-page-size { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--muted); font-size: 11px; }
+.poster-page-size select { border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; background: var(--surface, #1a1e1b); color: var(--paper); font: inherit; }
+.poster-export-count { margin: 0; color: var(--paper); font-size: 12px; line-height: 1.8; }
+.poster-export-count small { display: block; margin-top: 4px; color: var(--muted); font-size: 10px; }
+.poster-generating { flex-direction: column; gap: 15px; min-height: 360px; padding: 36px 20px; text-align: center; }
+.poster-generating > strong { color: var(--paper); font: 500 13px/1.5 "Manrope Variable", "Noto Sans SC Variable", sans-serif; font-variant-numeric: tabular-nums; }
+.poster-generating > small { max-width: 270px; color: var(--muted); font-size: 11px; line-height: 1.8; }
+.poster-generation-meter { width: min(250px, 100%); height: 3px; border-radius: 3px; overflow: hidden; background: var(--line, #ffffff20); }
+.poster-generation-meter > span { display: block; height: 100%; background: var(--accent, #d57757); transition: width 220ms ease; }
+@media (prefers-reduced-motion: reduce) { .poster-generation-meter > span { transition: none; } }
+@media (max-width: 600px) { .poster-module-options { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 10px; } .poster-module-options legend { grid-column: 1 / -1; } .poster-module-options label { min-height: 42px; } }
+@media (max-width: 720px) {
+  .poster-dialog-layout.poster-layout { grid-template-columns: minmax(0, 1fr); gap: 30px; }
+  .poster-dialog-layout > .poster-preview { grid-row: 1; min-height: 260px; max-height: 52vh; padding: 14px; }
+  .poster-dialog-layout > .poster-options { grid-row: 2; gap: 28px; }
+  .poster-dialog-layout .poster-options > * { grid-row: auto; grid-column: auto; }
+  .poster-dialog-layout .poster-format-list { gap: 7px; }
+  .poster-dialog-layout .poster-format-list button { min-height: 48px; padding: 12px 6px; }
+  .poster-dialog-layout .poster-module-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 14px; row-gap: 5px; }
+  .poster-dialog-layout .poster-module-options label { min-height: 46px; font-size: 12px; }
+  .poster-dialog-layout .poster-track-presets { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .poster-dialog-layout .poster-track-presets button { min-height: 44px; padding-inline: 3px; font-size: 12px; }
+  .poster-dialog-layout .poster-actions { flex-direction: column; }
+}
+@media (max-width: 350px) {
+  .poster-dialog-layout .poster-track-presets { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .poster-dialog-layout .poster-module-options { column-gap: 10px; }
+}

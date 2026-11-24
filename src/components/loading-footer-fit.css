@@ -1,0 +1,122 @@
+/* Footer links stay in a compact row even where the legacy footer stacked them. */
+.app-shell .editorial-footer .footer-links {
+  flex-direction: row;
+  min-width: 0;
+}
+.app-shell .editorial-footer .footer-links > a,
+.app-shell .editorial-footer .footer-links > button {
+  flex: 0 0 auto;
+}
+
+@media (min-width: 701px) {
+  /* A definite block size lets flex allocate the space above the footer. */
+  .app-shell.is-report-preparing {
+    height: 100svh;
+    min-height: 540px;
+  }
+  .app-shell.is-report-preparing > .site-header,
+  .app-shell.is-report-preparing > .main-wrap {
+    margin-block: 0;
+  }
+  .app-shell.is-report-preparing > .main-wrap {
+    flex: 1 1 0;
+    min-height: 0;
+  }
+  .app-shell.is-report-preparing .report-loading {
+    flex: 1 1 0;
+    min-height: 0;
+    min-width: 0;
+    padding-block: 14px;
+  }
+  .app-shell.is-report-preparing .report-loading-inner {
+    height: 100%;
+    min-height: 0;
+    grid-template-rows: minmax(0, 1fr);
+  }
+  .app-shell.is-report-preparing .report-loading-copy {
+    max-height: 100%;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    scrollbar-width: thin;
+    scrollbar-color: #5c6652 transparent;
+    padding-right: 6px;
+  }
+  .app-shell.is-report-preparing .report-loading-record {
+    width: min(100%, 360px, calc(100svh - 310px));
+    max-height: 100%;
+    height: auto;
+  }
+  .app-shell.is-report-preparing .report-closing {
+    flex: 0 0 auto;
+    min-width: 0;
+  }
+  .app-shell.is-report-preparing .editorial-footer {
+    padding-block: 16px;
+  }
+  .app-shell.is-report-preparing .editorial-footer .footer-links {
+    gap: 4px 16px;
+    align-content: center;
+  }
+}
+
+@media (min-width: 701px) and (max-width: 1000px) {
+  .app-shell.is-report-preparing .report-loading-inner {
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, .75fr);
+    gap: 24px;
+  }
+  .app-shell.is-report-preparing .report-loading-copy h2 { font-size: 28px; }
+  .app-shell.is-report-preparing .report-loading[lang="en"] .report-loading-copy h2 { font-size: 36px; }
+  .app-shell.is-report-preparing .report-loading-detail,
+  .app-shell.is-report-preparing .report-loading-error { margin-top: 12px; font-size: 13px; }
+  .app-shell.is-report-preparing .report-loading-actions { margin-top: 14px; gap: 2px 14px; }
+  .app-shell.is-report-preparing .report-loading-actions button { font-size: 12px; }
+  .app-shell.is-report-preparing .editorial-footer { gap: 18px; }
+}
+
+@media (max-width: 700px) {
+  /* Normal mobile flow remains accessible on short screens and at enlarged text sizes. */
+  .app-shell.is-report-preparing { min-height: 100svh; }
+  .app-shell.is-report-preparing .report-toolbar { padding-block: 12px 8px; }
+  .app-shell.is-report-preparing .report-loading {
+    min-height: 0;
+    padding-block: 16px 22px;
+  }
+  .app-shell.is-report-preparing .editorial-footer {
+    padding-block: 16px;
+    gap: 8px;
+  }
+  .app-shell.is-report-preparing .footer-brand {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: 8px;
+    width: 100%;
+    font-size: 14px;
+  }
+  .app-shell.is-report-preparing .footer-brand > span { margin-left: -8px; }
+  .app-shell.is-report-preparing .footer-brand > small {
+    margin: 0;
+    max-width: none;
+    font-size: 9px;
+  }
+  .app-shell.is-report-preparing .footer-brand > small:last-child { flex-basis: 100%; }
+  .app-shell.is-report-preparing .editorial-footer .footer-links {
+    justify-content: flex-start;
+    gap: 0 16px;
+    width: 100%;
+  }
+}
+
+@media (min-width: 1024px) and (min-height: 650px) and (hover: hover) and (pointer: fine) {
+  .app-shell .report-closing[data-report-slide] > .share-callout {
+    flex: 1 1 0;
+    min-height: 0;
+    box-sizing: border-box;
+  }
+  .app-shell .report-closing[data-report-slide] > .editorial-footer {
+    flex: 0 0 auto;
+    box-sizing: border-box;
+    padding-block: 18px;
+  }
+}

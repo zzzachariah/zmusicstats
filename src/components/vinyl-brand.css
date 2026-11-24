@@ -1,0 +1,31 @@
+/* Shared label and upright Z. Keep this after the site/header styles. */
+.app-shell .brand-disc { position: relative; flex: 0 0 auto; }
+.app-shell .brand-disc i { width: 55%; height: 55%; border: 0; background: #b34c43; }
+.app-shell .brand-disc::after,
+.app-shell .overview-brand-record::after,
+.app-shell .small-disc::after,
+.app-shell .mini-sleeve > div::after,
+.app-shell .period-vinyl-mark::after {
+  content: "";
+  position: absolute;
+  inset: 30% 34%;
+  border-radius: 0;
+  background: #f1ddba;
+  clip-path: polygon(3.4% 0,100% 0,100% 11.1%,20.7% 86.1%,82.8% 86.1%,82.8% 72.2%,100% 72.2%,100% 100%,0 100%,0 88.9%,79.3% 13.9%,20.7% 13.9%,20.7% 27.8%,3.4% 27.8%);
+  transform: none;
+  animation: none;
+}
+.app-shell .overview-brand-record::before { inset: 22.5%; background: #b34c43; }
+.app-shell .brand-disc::after { inset: 30% 34%; }
+.app-shell .small-disc::before,
+.app-shell .mini-sleeve > div::before,
+.app-shell .period-vinyl-mark::before {
+  content: "";
+  position: absolute;
+  inset: 22.5%;
+  border-radius: 50%;
+  background: #b34c43;
+}
+.app-shell .mini-sleeve.back > div,
+.app-shell .period-vinyl-mark { position: relative; }
+.app-shell .period-vinyl-mark > svg { visibility: hidden; }

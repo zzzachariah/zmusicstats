@@ -42,7 +42,7 @@ export const copy = {
     emptyGenre: "这些歌曲暂时没有足够的曲风信息。",
     overlap: "换个播放器，依然喜欢",
     overlapSub: "在不同平台的常听歌曲里，找到共同的喜欢。",
-    noOverlap: "暂时没有可确认的跨平台同版本歌曲。",
+    noOverlap: "所选月份中，暂未找到歌名相同或相近的跨平台歌曲。",
     posterEyebrow: "MADE TO KEEP",
     posterTitle: "把这个月，做成一张唱片。",
     posterDesc: "属于你的音乐封面，值得保存，也值得分享。",
@@ -70,7 +70,7 @@ export const copy = {
     qrScanned: "已扫码，请在手机上确认",
     qrExpired: "二维码已过期，请重新获取",
     qrHint:
-      "电脑上显示二维码，手机扫码确认。只有一台手机时的连接方式正在适配。",
+      "用对应音乐 App 扫码并确认。正在使用手机时，可使用下方的 App 入口或保存二维码。",
     loading: "正在准备…",
     connectionFailed: "暂时无法连接，请稍后重试。",
     reportFailed: "暂时未获取到报告，请重试或选择其他月份。",
@@ -140,8 +140,8 @@ export const copy = {
     unknown: "Unknown",
     emptyGenre: "There is not enough genre information for these tracks yet.",
     overlap: "Different players. Same love.",
-    overlapSub: "Favourite recordings shared across your platforms.",
-    noOverlap: "No matching recordings confirmed across your platforms yet.",
+    overlapSub: "Find familiar songs across your platforms by title and artist.",
+    noOverlap: "No songs with matching or similar titles found across platforms in this selection yet.",
     posterEyebrow: "MADE TO KEEP",
     posterTitle: "Give your month a sleeve.",
     posterDesc: "A personal record cover. Made for keeping, made for sharing.",
@@ -171,7 +171,7 @@ export const copy = {
     qrScanned: "Scanned. Please confirm on your phone.",
     qrExpired: "This code has expired. Generate a new one.",
     qrHint:
-      "Display the code on a computer and scan it with your phone. A single-phone connection flow is still being adapted.",
+      "Scan and confirm with the matching music app. On a phone, use the app link below or save the QR code.",
     loading: "Getting ready…",
     connectionFailed: "Unable to connect right now. Please try again.",
     reportFailed:

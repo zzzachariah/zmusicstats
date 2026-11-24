@@ -1,3 +1,5 @@
+import { connectionResponseError } from "./connection-errors";
+
 interface MusicKitInstance {
   authorize(): Promise<string | undefined>;
   musicUserToken?: string;
@@ -21,7 +23,7 @@ export function prepareAppleMusic(): Promise<MusicKitInstance> {
   if (preparation) return preparation;
   preparation = (async () => {
     const response = await fetch("/api/auth/apple/config");
-    if (!response.ok) throw new Error("APPLE_NOT_CONFIGURED");
+    if (!response.ok) throw await connectionResponseError(response,"APPLE_NOT_CONFIGURED");
     const config = await response.json();
     if (typeof config.developerToken !== "string" || !config.developerToken)
       throw new Error("APPLE_NOT_CONFIGURED");
@@ -74,5 +76,5 @@ export async function connectAppleMusic(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ musicUserToken }),
   });
-  if (!response.ok) throw new Error("APPLE_AUTH_FAILED");
+  if (!response.ok) throw await connectionResponseError(response,"APPLE_AUTH_FAILED");
 }

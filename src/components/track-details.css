@@ -1,0 +1,94 @@
+.track-details { display: inline-flex; align-items: center; vertical-align: middle; margin: 0; flex: 0 0 auto; }
+.track-details .track-details-trigger { width: 34px; height: 34px; display: grid; place-items: center; padding: 0; flex: 0 0 auto; border: 0; border-radius: 50%; background: transparent; color: #d2c6ae; cursor: pointer; touch-action: manipulation; }
+.track-details .track-details-trigger > svg { display: block; width: 34px; height: 34px; overflow: visible; }
+.track-details-disc { fill: #121714; stroke: #7e8375; stroke-width: .7; }
+.track-details-groove { stroke: #a6ad8c; stroke-width: .55; opacity: .36; }
+.track-details-label { fill: #b34c43; }
+.track-details-z { fill: #f1ddba; }
+.track-details-orbit { stroke: #cfad76; stroke-width: 1; stroke-dasharray: 100; stroke-dashoffset: 100; transition: stroke-dashoffset 600ms linear; }
+.track-details .track-details-trigger.is-active .track-details-orbit { stroke-dashoffset: 0; }
+.track-details .track-details-trigger:focus-visible { outline: 2px solid #d5b47c; outline-offset: 3px; }
+.track-details-popover { --detail-paper: #eee9df; --detail-muted: #a5aa98; position: fixed; z-index: 1200; box-sizing: border-box; width: 300px; height: 300px; overflow: visible; border-radius: 50%; color: var(--detail-paper); font: 11px/1.5 "Manrope Variable", "Noto Sans SC Variable", sans-serif; text-align: center; white-space: normal; isolation: isolate; }
+.track-details-surface::before { content: ""; position: absolute; inset: 10px; border: 1px solid #b9bc9330; border-radius: 50%; pointer-events: none; }
+.track-details-surface::after { content: ""; position: absolute; inset: 16px; border: 1px dotted #b9bc931d; border-radius: 50%; pointer-events: none; }
+.track-details-popover:focus { outline: none; }
+.track-details-popover:focus-visible { outline: 2px solid #d5b47c; outline-offset: 2px; }
+.track-details-popover.is-positioned .track-details-surface { animation: track-details-unfold 290ms cubic-bezier(.18,.72,.22,1) both; }
+.track-details-platter { position: absolute; inset: 7px; border-radius: 50%; pointer-events: none; background: repeating-radial-gradient(circle at center, transparent 0 3px, #c9d0ab0b 3.5px 4px), conic-gradient(from 28deg, transparent 0deg, #e2d6ad26 24deg, transparent 50deg 180deg, #e2d6ad14 207deg, transparent 232deg 360deg); }
+.track-details-platter::before { content: ""; position: absolute; inset: 2px; border: 2px solid transparent; border-top-color: #bca3729c; border-radius: 50%; transform: rotate(-32deg); }
+.track-details-platter::after { content: ""; position: absolute; top: 9px; left: calc(50% - 2px); width: 4px; height: 4px; border-radius: 50%; background: #d2b27a; box-shadow: 0 0 5px #d2b27a40; }
+.track-details-popover.is-positioned .track-details-platter { animation: track-details-spin 24s linear infinite; }
+.track-details-radial-stage { position: relative; z-index: 1; width: 300px; height: 300px; margin: -1px; transform: scale(var(--radial-scale,1)); transform-origin: 0 0; }
+.track-details-popover .track-details-close { position: absolute; z-index: 2; right: 8px; top: -36px; display: grid; place-items: center; width: 32px; height: 32px; padding: 0; background: #20271ff5; border: 1px solid #9b9c796b; border-radius: 50%; color: #d7ddce; cursor: pointer; }
+.track-details-close > svg { width: 13px; height: 13px; stroke: currentColor; stroke-width: 1.1; fill: none; }
+.track-details-popover .track-details-close:hover { background: #efecdb0c; color: var(--detail-paper); }
+.track-details-popover .track-details-close:focus-visible { outline: 1px solid #d5b47c; outline-offset: 1px; }
+.track-details-center { position: absolute; top: 79px; left: 83px; width: 134px; height: 124px; }
+.track-details-art { position: absolute; top: 41px; left: 37px; width: 60px; height: 60px; overflow: hidden; border-radius: 50%; transform-origin: 50% 50%; }
+.track-details-art > svg { position: absolute; inset: 0; display: block; width: 100%; height: 100%; max-width: none; }
+.track-details-art .track-details-orbit { display: none; }
+.track-details-art img { position: absolute; box-sizing: border-box; width: 44px; height: 44px; left: 50%; top: 50%; transform: translate(-50%, -50%); display: block; object-fit: cover; object-position: center; border-radius: 50%; border: 1px solid #d7d0ac55; }
+.track-details-art::after { content: ""; position: absolute; inset: 2px; border: 1px solid transparent; border-top-color: #d2b27a80; border-radius: 50%; transform: rotate(-32deg); pointer-events: none; }
+.track-details-popover.is-positioned .track-details-art::after { animation: track-details-spin 24s linear infinite; }
+.track-details-center h3 { position: absolute; top: 0; left: 0; width: 100%; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; max-width: 100%; margin: 0; color: var(--detail-paper); font-family: "Noto Serif SC Variable", serif; font-size: 14px; font-weight: 500; line-height: 1.4; overflow-wrap: anywhere; }
+.track-details-popover[lang="en"] .track-details-center h3 { font-family: "Instrument Serif", Georgia, serif; font-size: 16px; font-weight: 400; line-height: 1.08; }
+.track-details-center p { position: absolute; top: 108px; left: 0; width: 100%; max-width: 100%; margin: 0; color: #b6bdab; font-size: 10px; line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.track-details-field-label { display: block; color: #b6bdab; font-size: 11px; line-height: 1.4; letter-spacing: .04em; font-weight: 400; }
+.track-details-radial-count { position: absolute; top: 27px; left: 77px; width: 146px; }
+.track-details-radial-count > strong { display: block; margin-top: 2px; color: #e1c997; font: 400 28px/1.15 "Instrument Serif", Georgia, serif; font-variant-numeric: tabular-nums; }
+.track-details-radial-count small { margin-left: 4px; color: #aeb29c; font: 400 8px/1 "Manrope Variable", "Noto Sans SC Variable", sans-serif; }
+.track-details-radial-length { position: absolute; top: 117px; right: 18px; width: 65px; }
+.track-details-radial-length > strong { display: block; margin-top: 4px; color: #d7d9c4; font: 400 21px/1.2 "Instrument Serif", Georgia, serif; font-variant-numeric: tabular-nums; }
+.track-details-radial-genres { position: absolute; top: 113px; left: 17px; width: 67px; }
+.track-details-radial-genres > strong { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; margin-top: 3px; color: #d1d8c0; font-size: 11px; font-weight: 500; line-height: 1.35; overflow: hidden; overflow-wrap: anywhere; white-space: normal; }
+.track-details-radial-genres > small { display: block; margin-top: 2px; color: var(--detail-muted); font-size: 8px; line-height: 1.2; }
+.track-details-radial-genres > strong.is-unknown { color: var(--detail-muted); font-weight: 400; }
+.track-details-radial-months { position: absolute; top: 216px; left: 63px; width: 174px; display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
+.track-details-radial-months strong { display: block; margin-top: 3px; color: #d1d5be; font-size: 11px; font-weight: 400; line-height: 1.4; font-variant-numeric: tabular-nums; }
+.track-details-platforms { position: absolute; top: 263px; left: 90px; width: 120px; display: flex; justify-content: center; align-items: center; gap: 7px; }
+.track-details-platforms > span { display: inline-flex; padding: 1px; border: 1px solid #b9bc9336; border-radius: 50%; }
+.track-details-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+.track-details-popover .radial-reveal { opacity: 0; }
+.track-details-popover.is-positioned .radial-reveal { animation: track-details-information 330ms ease-out both; }
+.track-details-popover.is-positioned .track-details-center { animation-delay: 110ms; }
+.track-details-popover.is-positioned .track-details-radial-count { animation-delay: 170ms; }
+.track-details-popover.is-positioned .track-details-radial-length { animation-delay: 230ms; }
+.track-details-popover.is-positioned .track-details-radial-genres { animation-delay: 290ms; }
+.track-details-popover.is-positioned .track-details-radial-months { animation-delay: 350ms; }
+.track-details-popover.is-positioned .track-details-platforms { animation-delay: 410ms; }
+@keyframes track-details-unfold { from { clip-path: circle(0 at var(--radial-origin-x) var(--radial-origin-y)); } to { clip-path: circle(var(--radial-reveal-radius) at var(--radial-origin-x) var(--radial-origin-y)); } }
+@keyframes track-details-information { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes track-details-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@media (hover: none), (pointer: coarse), (max-width: 600px) {
+  .track-details .track-details-trigger { width: 40px; height: 40px; }
+  .track-details-popover .track-details-close { right: 8px; top: -44px; width: 40px; height: 40px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .track-details-orbit { transition: none; }
+  .track-details-popover.is-positioned .track-details-surface { animation: none; clip-path: none; }
+  .track-details-popover .radial-reveal, .track-details-popover.is-positioned .radial-reveal { animation: none; opacity: 1; transform: none; }
+  .track-details-popover.is-positioned .track-details-platter, .track-details-popover.is-positioned .track-details-art::after { animation: none; }
+}
+
+.track-details-surface { position: absolute; inset: 0; box-sizing: border-box; overflow: clip; border: 1px solid #9b9c796b; border-radius: 50%; background: #20271f; box-shadow: 0 14px 45px #05080566, inset 0 0 0 7px #161d1466; }
+.track-details-radial-length > strong.track-listening-hours { font: 400 12px/1.5 "Manrope Variable","Noto Sans SC Variable",sans-serif; overflow-wrap: anywhere; }
+.track-details-radial-length > small { display: block; margin-top: 7px; font-size: 9px; line-height: 1.4; color: #a5aa98; }
+.track-details-radial-months { top: 211px; }
+.track-details-platforms { top: 277px; gap: 6px; }
+.track-details-platforms .platform-icon { width: 14px !important; height: 14px !important; }
+.track-details-time-switch { position: absolute; top: 246px; left: 78px; width: 144px; min-height: 28px; padding: 3px 0; border: 0; background: transparent; color: #d6bd90; font: 11px/1.5 "Manrope Variable","Noto Sans SC Variable",sans-serif; cursor: pointer; }
+.track-details-time-switch:focus-visible,.track-details-time-back:focus-visible { outline: 1px solid #d6bd90; outline-offset: 1px; }
+.track-details-time-face { position: absolute; inset: 0; animation: track-details-information 220ms ease-out both; }
+.track-details-time-back { position: absolute; top: 25px; left: 65px; width: 170px; min-height: 32px; padding: 0; border: 0; background: transparent; color: #b6bdab; font: 10px/1.5 "Manrope Variable","Noto Sans SC Variable",sans-serif; cursor: pointer; }
+.track-details-time-face .time-perspective { position: absolute; top: 57px; left: 46px; width: 208px; padding: 6px 0; }
+.track-details-time-face .time-perspective-heading { display: block; text-align: center; }
+.track-details-time-face .time-perspective-heading > span { display: block; color: #b6bdab; font-size: 10px; }
+.track-details-time-face .time-perspective-heading > strong { display: block; margin: 6px 0 2px; font-size: 21px; color: #e1c997; }
+.track-details-time-face .time-perspective-heading > small { display: block; font-size: 9px; }
+.track-details-time-face .time-perspective-story { padding-block: 11px 4px; align-items: center; gap: 8px; }
+.track-details-time-face .time-scene { width: 42px; height: 42px; flex-basis: 42px; }
+.track-details-time-face .time-perspective-eyebrow { display: none; }
+.track-details-time-face .time-perspective-copy p { font-family: "Manrope Variable","Noto Sans SC Variable",sans-serif; font-size: 11px; line-height: 1.65; margin: 0; }
+.track-details-time-face .time-perspective-actions { justify-content: center; }
+.track-details-time-face .time-perspective-compact-note { text-align: center; font-size: 8px; padding-inline: 12px; }
+@media(prefers-reduced-motion:reduce) { .track-details-time-face { animation: none; } }
