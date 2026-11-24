@@ -46,7 +46,8 @@
   .app-shell #report-platforms .zm-donut-legend:has(> .zm-platform-legend-button:nth-child(3)) .zm-platform-metrics { grid-template-columns: 1fr; gap: 6px; }
   .app-shell #report-platforms .zm-donut-plot { max-width: min(260px,30vh); }
   .app-shell #report-platforms .platform-time-stories { margin-top: 8px; padding-top: 12px; gap: 20px; }
-  .app-shell #report-platforms .time-perspective-story { margin-block: 7px; }
+  .app-shell #report-platforms .time-perspective { padding-block: 8px; }
+  .app-shell #report-platforms .time-perspective-story { margin-block: 5px; min-height: 72px; padding-block: 6px; }
   .app-shell #report-platforms .zm-donut-footnote { margin-top: 5px; font-size: 10px; line-height: 1.65; }
   .app-shell #report-ranking { display: flex; flex-direction: column; }
   .app-shell #report-ranking .section-heading { margin-bottom: 18px; }
