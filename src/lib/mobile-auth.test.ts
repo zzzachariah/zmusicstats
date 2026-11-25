@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { canOpenMobileAuth, readQQMobileAuth } from "./mobile-auth.ts";
+import { canOpenMobileAuth, readQQMobileAuth, readMobileAuth, mobileLaunchScheme } from "./mobile-auth.ts";
 
 const deadline = 2_000_000_000_000;
 function response(target = "https://y.qq.com/m/client/qr_code_login/authorize.html?qrcode_id=test-challenge") {
@@ -43,4 +43,19 @@ test("only a live waiting or scanned challenge may open the app", () => {
 test("keeps known launch failure reasons but never displays arbitrary upstream text", () => {
   assert.deepEqual(readQQMobileAuth({ status: "unavailable", code: "MOBILE_AUTH_TIMEOUT" }, deadline), { status: "unavailable", code: "MOBILE_AUTH_TIMEOUT" });
   assert.deepEqual(readQQMobileAuth({ status: "unavailable", code: "https://example.com/private-token" }, deadline), { status: "unavailable", code: "MOBILE_AUTH_UNAVAILABLE" });
+});
+
+test("NetEase advertises its scanner without claiming direct authorization", () => {
+  const auth = readMobileAuth("netease", null, deadline);
+  assert.equal(auth.status === "available" && auth.kind, "app-scanner");
+  assert.equal(mobileLaunchScheme(auth), "orpheus://scancode");
+  assert.equal(canOpenMobileAuth(auth, "waiting", deadline), false);
+  assert.equal(readMobileAuth("apple", null, deadline).status, "unavailable");
+});
+
+test("automatic app attempts only extract validated schemes", () => {
+  const auth = readQQMobileAuth(response(), deadline);
+  assert.ok(mobileLaunchScheme(auth)?.startsWith("qqmusic://qq.com/ui/openUrl?"));
+  assert.equal(mobileLaunchScheme({ ...response(), kind: "app-scanner", url: "https://example.com/?scheme=unsafe" } as Parameters<typeof mobileLaunchScheme>[0]), null);
+  assert.equal(mobileLaunchScheme({ ...response(), url: "https://example.com/?scheme=unsafe" } as Parameters<typeof mobileLaunchScheme>[0]), null);
 });

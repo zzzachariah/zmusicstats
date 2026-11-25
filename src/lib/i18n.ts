@@ -70,7 +70,7 @@ export const copy = {
     qrScanned: "已扫码，请在手机上确认",
     qrExpired: "二维码已过期，请重新获取",
     qrHint:
-      "用对应音乐 App 扫码并确认。正在使用手机时，可使用下方的 App 入口或保存二维码。",
+      "用对应音乐 App 扫码并确认。同一台手机上，可保存二维码，再从 App 扫一扫的相册中识别。",
     loading: "正在准备…",
     connectionFailed: "暂时无法连接，请稍后重试。",
     reportFailed: "暂时未获取到报告，请重试或选择其他月份。",
@@ -171,7 +171,7 @@ export const copy = {
     qrScanned: "Scanned. Please confirm on your phone.",
     qrExpired: "This code has expired. Generate a new one.",
     qrHint:
-      "Scan and confirm with the matching music app. On a phone, use the app link below or save the QR code.",
+      "Scan and confirm in the matching app. On the same phone, save this QR and select it in the app’s photo scanner.",
     loading: "Getting ready…",
     connectionFailed: "Unable to connect right now. Please try again.",
     reportFailed:

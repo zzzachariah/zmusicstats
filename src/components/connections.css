@@ -174,6 +174,10 @@
   }
 }
 .mobile-login-tools { display:none; }
+.qr-visual { display:grid; justify-items:center; gap:14px; }
+.qr-visual[hidden] { display:none; }
+.qr-visual p { margin:0; }
+.mobile-save-qr { align-self:center; }
 @media(max-width:600px),(hover:none),(pointer:coarse) {
   .mobile-login-tools { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:10px; padding:17px 0 0; border-top:1px solid var(--line); width:100%; text-align:left; }
   .mobile-login-tools > strong,.mobile-login-tools > p { width:100%; margin:0; }
@@ -186,6 +190,8 @@
   .qr-section-mobile-app .mobile-login-tools { order:-1; margin-bottom:6px; padding:0 0 18px; border-top:0; border-bottom:1px solid var(--line); }
   .mobile-login-tools .mobile-app-authorize { width:100%; color:var(--paper); border-color:#9fb482; background:#35462b; }
   .mobile-login-tools .mobile-app-authorize:focus-visible { outline:2px solid #d5ab72; outline-offset:3px; }
-  .mobile-login-tools .mobile-auth-status { padding:10px 12px; border-left:2px solid #9fb482; background:#9fb4820c; }
+  .mobile-login-tools .mobile-auth-status { display:flex; align-items:flex-start; gap:8px; padding:10px 12px; border-left:2px solid #9fb482; background:#9fb4820c; }
+  .mobile-auth-status svg { flex:none; margin-top:4px; }
+  .mobile-auth-actions { display:flex; flex-wrap:wrap; justify-content:center; gap:8px; width:100%; }
   .mobile-login-tools .mobile-qr-fallback { padding-top:5px; }
 }

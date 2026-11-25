@@ -2,10 +2,29 @@ const unavailableCodes = ["MOBILE_AUTH_UNAVAILABLE", "MOBILE_AUTH_QR_UNREADABLE"
 type UnavailableCode = typeof unavailableCodes[number];
 
 export type MobileAuth =
-  | { status: "available"; kind: "app-authorization"; url: string; expiresAt: number; verification: "device-test-required" }
+  | { status: "available"; kind: "app-authorization" | "app-scanner"; url: string; expiresAt: number; verification: "device-test-required" }
   | { status: "unavailable"; code: UnavailableCode };
 
 const unavailable: MobileAuth = { status: "unavailable", code: "MOBILE_AUTH_UNAVAILABLE" };
+
+// NetEase's published mobile bundle exposes scancode, not a QR authorization route.
+// Do not invent a login scheme or treat opening the scanner as authorization.
+const neteaseScanner = "https://music.163.com/m/applink/?scheme=orpheus%3A%2F%2Fscancode";
+
+export function readMobileAuth(provider: string, value: unknown, expiresAt: number): MobileAuth {
+  if (provider === "netease" && Number.isFinite(expiresAt)) return {
+    status: "available", kind: "app-scanner", url: neteaseScanner, expiresAt, verification: "device-test-required",
+  };
+  return provider === "qq" ? readQQMobileAuth(value, expiresAt) : unavailable;
+}
+
+/** An automatic custom-scheme attempt keeps this report page open for the QR fallback. */
+export function mobileLaunchScheme(auth: MobileAuth | undefined): string | null {
+  if (auth?.status !== "available") return null;
+  if (auth.kind === "app-scanner") return auth.url === neteaseScanner ? "orpheus://scancode" : null;
+  const validated = readQQMobileAuth(auth, auth.expiresAt);
+  return validated.status === "available" ? new URL(validated.url).searchParams.get("scheme") : null;
+}
 
 /** Accept only the QQ Music authorization page wrapped by its official app link. */
 export function readQQMobileAuth(value: unknown, expiresAt: number): MobileAuth {

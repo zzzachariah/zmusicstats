@@ -8,7 +8,7 @@ import { copy, type Language } from "../lib/i18n";
 import type { PlatformId } from "../lib/report";
 import { prepareAppleMusic, connectAppleMusic } from "../lib/apple-music";
 import { connectionErrorMessage, connectionResponseError } from "../lib/connection-errors";
-import { canOpenMobileAuth, readQQMobileAuth, type MobileAuth } from "../lib/mobile-auth";
+import { canOpenMobileAuth, readMobileAuth, mobileLaunchScheme, type MobileAuth } from "../lib/mobile-auth";
 import { IS_BROWSER_STORAGE, IS_UI_PREVIEW, UI_PREVIEW_LABEL, UI_PREVIEW_CONNECTION_REASON } from "../lib/runtime-mode";
 import "./connections.css";
 
@@ -80,8 +80,11 @@ function LiveConnections({
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<PlatformId | null>(null);
   const [qr, setQr] = useState<QR | null>(null);
+  const [mobileLayout, setMobileLayout] = useState(() => matchMedia("(max-width:600px),(hover:none),(pointer:coarse)").matches);
+  const [showQrFallback, setShowQrFallback] = useState(false);
   const [mobileStatus, setMobileStatus] = useState<"idle" | "opening" | "pending" | "checking" | "unconfirmed">("idle");
   const appLaunchQr = useRef<string | null>(null);
+  const appLeftPage = useRef(false);
   const appLaunchTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const checkQrNow = useRef<(() => void) | null>(null);
   const [error, setError] = useState("");
@@ -97,6 +100,13 @@ function LiveConnections({
   const languageRef = useRef(language); languageRef.current = language;
   onSyncRef.current = onSync;
   copyRef.current = t;
+
+  useEffect(() => {
+    const media = matchMedia("(max-width:600px),(hover:none),(pointer:coarse)");
+    const update = () => setMobileLayout(media.matches);
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
 
   useEffect(() => { if (open) setTab(initialTab); }, [open, initialTab]);
   useLayoutEffect(() => {
@@ -233,11 +243,13 @@ function LiveConnections({
         setError("");
         setQr(current => current?.id === qrId ? { ...current, state: result.state } : current);
         if (appLaunchQr.current === qrId) {
+          if (result.state !== "connected" && appLeftPage.current && document.visibilityState === "visible") setShowQrFallback(true);
           setMobileStatus(current => result.state === "connected" ? "idle"
             : result.state === "scanned" || current === "checking" ? "pending" : current);
         }
         if (result.state === "connected") {
           stopped = true;
+          clearTimeout(appLaunchTimer.current);
           clearTimeout(expiryTimer);
           await finishConnection(`qr:${qrId}`, qrProvider, qrAttempt, controller.signal);
           return;
@@ -245,7 +257,10 @@ function LiveConnections({
         schedule(2500);
       } catch (error) {
         if (controller.signal.aborted || stopped || !currentAttempt()) return;
-        if (appLaunchQr.current === qrId) setMobileStatus(current => current === "checking" ? "pending" : current);
+        if (appLaunchQr.current === qrId) {
+          setShowQrFallback(true);
+          setMobileStatus(current => current === "checking" ? "pending" : current);
+        }
         setError(connectionErrorMessage(error,languageRef.current));
         schedule(5000);
       } finally { polling=false; }
@@ -260,7 +275,7 @@ function LiveConnections({
     const resume = () => {
       if (appLaunchQr.current === qrId) {
         clearTimeout(appLaunchTimer.current);
-        if (document.visibilityState !== "visible") setMobileStatus("pending");
+        if (document.visibilityState !== "visible") { appLeftPage.current = true; setMobileStatus("pending"); }
       }
       if (document.visibilityState === "visible") checkNow();
     };
@@ -280,13 +295,37 @@ function LiveConnections({
     };
   }, [qrId, qrProvider, qrExpiresAt, qrAttempt, finishConnection]);
 
+  const launchApp = (challenge: QR, automatic = false) => {
+    const scheme = mobileLaunchScheme(challenge.mobileAuth);
+    if (!scheme || !canOpenMobileAuth(challenge.mobileAuth, challenge.state)) {
+      setShowQrFallback(true);
+      return false;
+    }
+    appLaunchQr.current = challenge.id;
+    appLeftPage.current = false;
+    setShowQrFallback(false);
+    setMobileStatus("opening");
+    clearTimeout(appLaunchTimer.current);
+    appLaunchTimer.current = setTimeout(() => {
+      if (mounted.current && appLaunchQr.current === challenge.id && document.visibilityState === "visible") {
+        setMobileStatus("unconfirmed");
+        setShowQrFallback(true);
+      }
+    }, 3500);
+    if (automatic) {
+      try { window.location.assign(scheme); }
+      catch { clearTimeout(appLaunchTimer.current); setMobileStatus("unconfirmed"); setShowQrFallback(true); }
+    }
+    return true;
+  };
+
   const connect = async (provider: PlatformId) => {
     const attempt = ++actionSequence.current;
     actionController.current?.abort();
     const controller = new AbortController();
     actionController.current = controller;
     setBusy(provider); setError(""); setQr(null);
-    appLaunchQr.current = null; clearTimeout(appLaunchTimer.current); setMobileStatus("idle");
+    appLaunchQr.current = null; appLeftPage.current = false; clearTimeout(appLaunchTimer.current); setMobileStatus("idle"); setShowQrFallback(false);
     try {
       if (provider === "apple") {
         if (!apple) throw new Error("APPLE_NOT_READY");
@@ -303,9 +342,11 @@ function LiveConnections({
       if (typeof data.id !== "string" || typeof data.qrImage !== "string" || !data.qrImage.startsWith("data:image/")
         || typeof data.expiresAt !== "number" || !Number.isFinite(data.expiresAt)) throw new Error("QR_INVALID");
       setError("");
-      setQr({ id: data.id, qrImage: data.qrImage, expiresAt: data.expiresAt, provider, attempt, state: "waiting",
-        ...(provider === "qq" ? { mobileAuth: readQQMobileAuth(data.mobileAuth, data.expiresAt) } : {}),
-      });
+      const challenge: QR = { id: data.id, qrImage: data.qrImage, expiresAt: data.expiresAt, provider, attempt, state: "waiting",
+        mobileAuth: readMobileAuth(provider, data.mobileAuth, data.expiresAt),
+      };
+      setQr(challenge);
+      if (mobileLayout) launchApp(challenge, true);
     } catch (error) {
       if (mounted.current && !controller.signal.aborted && attempt === actionSequence.current) setError(connectionErrorMessage(error,languageRef.current));
     } finally {
@@ -335,8 +376,9 @@ function LiveConnections({
 
   const connected = providers.some(provider => provider.connected);
   const qrActive = qr?.state === "waiting" || qr?.state === "scanned";
+  const qrVisible = !mobileLayout || showQrFallback;
   const mobileMessage = mobileStatus === "opening"
-    ? (language === "zh" ? "正在打开 QQ 音乐，请在 App 内确认授权。" : "Opening QQ Music. Confirm authorization in the app.")
+    ? (language === "zh" ? `正在尝试打开${qr ? t[qr.provider] : "App"}…` : `Trying to open ${qr ? t[qr.provider] : "the app"}…`)
     : mobileStatus === "checking"
       ? (language === "zh" ? "正在检查这次连接的授权结果…" : "Checking authorization for this connection…")
       : mobileStatus === "unconfirmed"
@@ -372,50 +414,47 @@ function LiveConnections({
           </div>
           {provider.connected ? <button className="quiet-button connection-control" disabled={!!busy || syncing} onClick={() => void disconnect(provider.id)} aria-label={`${t.disconnect} ${t[provider.id]}`}>{busy === provider.id ? <LoaderCircle size={15} className="loading-spin" aria-hidden="true" /> : null}{t.disconnect}</button>
             : <button className="small-button connection-control" disabled={!provider.configured || !!busy || syncing || (provider.id === "apple" && !apple)} onClick={() => void connect(provider.id)}>
-              {busy === provider.id ? <LoaderCircle size={16} className="loading-spin" aria-hidden="true" /> : provider.id === "apple" ? <Link2 size={16} aria-hidden="true" /> : <QrCode size={16} aria-hidden="true" />}
-              {provider.id === "apple" ? (language === "zh" ? "Apple 账号授权" : embedded ? "Authorize" : "Authorize Apple") : embedded && language === "en" ? "Connect" : t.connectButton}
+              {busy === provider.id ? <LoaderCircle size={16} className="loading-spin" aria-hidden="true" /> : provider.id === "apple" ? <Link2 size={16} aria-hidden="true" /> : mobileLayout ? <ExternalLink size={16} aria-hidden="true" /> : <QrCode size={16} aria-hidden="true" />}
+              {provider.id === "apple" ? (language === "zh" ? "Apple 账号授权" : embedded ? "Authorize" : "Authorize Apple") : mobileLayout ? (language === "zh" ? "打开 App 连接" : "Connect") : embedded && language === "en" ? "Connect" : t.connectButton}
             </button>}
           {!provider.configured && <p className="connection-help">{t.unavailableHelp}</p>}
         </div>)}
       </div>}
-      {qr && <div className={`qr-section${qr.provider === "qq" && qrActive ? " qr-section-mobile-app" : ""}`}>
+      {qr && <div className={`qr-section${mobileLayout && qrActive ? " qr-section-mobile-app" : ""}`}>
         {qr.state === "connected" ? <div className="qr-complete" role="status"><Check size={42} aria-hidden="true" /><strong>{t.connected}</strong><span>{t.syncing}</span></div>
           : qr.state === "expired" ? <div className="qr-complete" role="status"><p>{t.qrExpired}</p><button className="button" disabled={!!busy || syncing} onClick={() => void connect(qr.provider)}><RefreshCw size={16} aria-hidden="true" />{t.retry}</button></div>
-            : <><div className="qr-paper"><img src={qr.qrImage} width="200" height="200" alt={`${t[qr.provider]} — ${t.connectButton}`} /></div><strong role="status" aria-live="polite">{qr.state === "scanned" ? t.qrScanned : t.qrWait}</strong></>}
-        {qr.state !== "connected" && <p>{t.qrHint}</p>}
-        {qrActive && <div className="mobile-login-tools">
-          <strong>{language === "zh" ? "正在用这台手机？" : "Using this phone?"}</strong>
-          {qr.provider === "qq" ? <>
-            <p>{language === "zh" ? "在 QQ 音乐中确认本次连接，再返回此页检查。无需重新生成二维码。" : "Confirm this connection in QQ Music, then return here to check. You do not need a new QR code."}</p>
-            {qr.mobileAuth?.status === "available" ? <a className="small-button mobile-app-authorize" href={qr.mobileAuth.url}
-              referrerPolicy="no-referrer" onClick={event => {
-                if (!canOpenMobileAuth(qr.mobileAuth, qr.state)) {
-                  event.preventDefault();
-                  setQr(current => current?.id === qr.id ? { ...current, state: "expired" } : current);
-                  return;
-                }
-                appLaunchQr.current = qr.id;
-                setMobileStatus("opening");
-                clearTimeout(appLaunchTimer.current);
-                appLaunchTimer.current = setTimeout(() => {
-                  if (mounted.current && appLaunchQr.current === qr.id && document.visibilityState === "visible") {
-                    setMobileStatus(current => current === "opening" ? "unconfirmed" : current);
-                  }
-                }, 3500);
-              }}><ExternalLink size={15} aria-hidden="true" />{language === "zh" ? "打开 QQ 音乐继续授权" : "Continue in QQ Music"}</a>
-              : <p className="mobile-login-limitation" role="status">{connectionErrorMessage(new Error(qr.mobileAuth?.status === "unavailable" ? qr.mobileAuth.code : "MOBILE_AUTH_UNAVAILABLE"), language)}</p>}
-            {mobileStatus !== "idle" && <button className="small-button" disabled={mobileStatus === "checking"} onClick={() => checkQrNow.current?.()}>
+            : <div className="qr-visual" hidden={!qrVisible}>
+              <div className="qr-paper"><img src={qr.qrImage} width="200" height="200" alt={`${t[qr.provider]} — ${t.connectButton}`} /></div>
+              <strong role="status" aria-live="polite">{qr.state === "scanned" ? t.qrScanned : t.qrWait}</strong>
+              <p>{t.qrHint}</p>
+            </div>}
+        {qrActive && mobileLayout && <div className="mobile-login-tools">
+          <strong>{language === "zh" ? "先在 App 中继续" : "Continue in the app"}</strong>
+          <p>{qr.provider === "netease"
+            ? (language === "zh" ? "网易云会尝试打开扫一扫。此入口仍需识别二维码；返回本页后可保存图片，再从扫一扫的相册中选择。" : "NetEase opens its scanner. It still needs the QR image: return here to save it, then select it from the scanner’s photo library.")
+            : (language === "zh" ? "在 QQ 音乐中确认本次连接。返回后自动检查；未完成时会展开同一次连接的二维码。" : "Confirm this connection in QQ Music. We check when you return and reveal the same QR if authorization is incomplete.")}</p>
+          {qr.mobileAuth?.status === "available" ? <a className="small-button mobile-app-authorize" href={qr.mobileAuth.url}
+            target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer"
+            onClick={event => { if (!launchApp(qr)) event.preventDefault(); }}>
+            <ExternalLink size={15} aria-hidden="true" />{qr.provider === "netease"
+              ? (language === "zh" ? "打开网易云扫一扫" : "Open NetEase scanner")
+              : (language === "zh" ? "打开 QQ 音乐继续授权" : "Continue in QQ Music")}
+          </a> : <p className="mobile-login-limitation" role="status">{connectionErrorMessage(new Error(qr.mobileAuth?.status === "unavailable" ? qr.mobileAuth.code : "MOBILE_AUTH_UNAVAILABLE"), language)}</p>}
+          {mobileMessage && <p className="mobile-auth-status" role="status" aria-live="polite">
+            {(mobileStatus === "opening" || mobileStatus === "checking") && <LoaderCircle size={16} className="loading-spin" aria-hidden="true" />}{mobileMessage}
+          </p>}
+          <div className="mobile-auth-actions">
+            <button className="small-button" disabled={mobileStatus === "checking"} onClick={() => checkQrNow.current?.()}>
               {mobileStatus === "checking" ? <LoaderCircle size={15} className="loading-spin" aria-hidden="true" /> : <RefreshCw size={15} aria-hidden="true" />}
-              {language === "zh" ? "我已确认，检查连接" : "I confirmed — check connection"}
+              {language === "zh" ? "我已确认，检查连接" : "Check connection"}
+            </button>
+            {!showQrFallback && <button className="small-button" onClick={() => { clearTimeout(appLaunchTimer.current); setShowQrFallback(true); setMobileStatus("idle"); }}>
+              <QrCode size={15} aria-hidden="true" />{language === "zh" ? "改用二维码" : "Use QR instead"}
             </button>}
-            {mobileMessage && <p className="mobile-auth-status" role="status" aria-live="polite">{mobileMessage}</p>}
-            {qr.mobileAuth?.status === "available" && <p className="mobile-login-limitation">{language === "zh" ? "手机授权入口待真机验证。若只打开了 App 首页，连接仍未完成；请改用二维码。微信内打不开时，可在 Safari 中重试。" : "This mobile authorization link still needs device testing. If only the app home opens, you are not connected; use the QR code. If WeChat blocks the link, retry in Safari."}</p>}
-            <p className="mobile-qr-fallback">{language === "zh" ? "备用方式：用另一台设备展示二维码，再用 QQ 音乐扫一扫；也可尝试保存图片，在支持相册识别的扫一扫中打开。" : "Alternative: display the QR on another device and scan it in QQ Music, or save it if your scanner supports images from your photo library."}</p>
-          </> : <p>{language === "zh" ? "先保存二维码，再在音乐 App 的扫一扫中从相册识别。确认后返回本页，会自动检查连接。" : "Save the QR image, then select it from the music app's scanner. Confirm and return here; the connection is checked automatically."}</p>}
-          <a className="small-button" href={qr.qrImage} download={`zmusicstats-${qr.provider}-login.png`}><Download size={15} aria-hidden="true" />{language === "zh" ? "保存登录二维码" : "Save login QR"}</a>
-          {qr.provider === "netease" && <a className="small-button" href="https://music.163.com/m/applink/?scheme=orpheus%3A%2F%2Fscancode" target="_blank" rel="noopener noreferrer"><ExternalLink size={15} aria-hidden="true" />{language === "zh" ? "打开网易云扫一扫" : "Open NetEase scanner"}</a>}
-          {qr.provider === "netease" && <p className="mobile-login-limitation">{language === "zh" ? "此入口打开扫一扫，不会自动完成授权。如果未跳转，请手动打开 App。" : "This opens the scanner; it does not grant authorization. If it does not open, launch the app manually."}</p>}
+          </div>
+          {showQrFallback && <p className="mobile-qr-fallback">{language === "zh" ? "可保存下方二维码，在 App 的扫一扫中从相册识别；也可用另一台设备展示后扫码。微信内无法打开 App 时，请在 Safari 或系统浏览器中重试。" : "Save the QR below and choose it in the app’s scanner, or display it on another device. If an in-app browser blocks opening the app, retry in Safari or your system browser."}</p>}
         </div>}
+        {qrActive && mobileLayout && showQrFallback && <a className="small-button mobile-save-qr" href={qr.qrImage} download={`zmusicstats-${qr.provider}-login.png`}><Download size={15} aria-hidden="true" />{language === "zh" ? "保存登录二维码" : "Save login QR"}</a>}
       </div>}
       {refreshError && <div className="connection-refresh-error" role="alert"><p className="inline-error">{refreshError}</p><button className="small-button" disabled={loading} onClick={() => void refresh()}>{loading ? <LoaderCircle size={15} className="loading-spin" aria-hidden="true" /> : <RefreshCw size={15} aria-hidden="true" />}{t.retry}</button></div>}
       {error && <p className="inline-error" role="alert">{error}</p>}
