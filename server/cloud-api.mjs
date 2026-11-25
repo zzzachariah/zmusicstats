@@ -72,13 +72,38 @@ export function createCloudApi({ env = process.env, store, adapters, artwork, wa
         if (!session.connections[provider]) throw failure(401, "NOT_CONNECTED", "请先连接这个音乐平台。");
         return session.connections[provider];
       };
-      if (url.pathname === "/api/connections" && method === "GET") return reply({ storage: "browser", expiresAt: session.expiresAt,
+      if (url.pathname === "/api/connections" && method === "GET") {
+        // A confirmed QR can arrive before its optional profile request succeeds.
+        // Repair a missing display name without replacing the account's report scope.
+        const missing = PROVIDERS.filter(provider => provider !== "apple" && session.connections[provider] && !publicAccount(session.connections[provider].account));
+        await Promise.all(missing.map(async provider => {
+          const connected = session.connections[provider]; let claimed = false;
+          await store.update(sessionKey, current => {
+            claimed = false;
+            const existing = current?.connections[provider];
+            if (!existing || existing.connectionId !== connected.connectionId || publicAccount(existing.account)
+              || (existing.profileCheckedAt && now() - existing.profileCheckedAt < 60_000)) return undefined;
+            existing.profileCheckedAt = now(); claimed = true; return current;
+          });
+          if (!claimed) return;
+          let account;
+          try { account = publicAccount(await adapters.account(provider, connected.credential, { timeoutMs: 4000 })); } catch { return; }
+          if (!account) return;
+          await store.update(sessionKey, current => {
+            const existing = current?.connections[provider];
+            if (!existing || existing.connectionId !== connected.connectionId) return undefined;
+            existing.account = account; return current;
+          });
+        }));
+        if (missing.length) session = assertSession((await store.read(sessionKey)).value);
+        return reply({ storage: "browser", expiresAt: session.expiresAt,
         providers: PROVIDERS.map(id => ({ id, name: { netease: "网易云音乐", qq: "QQ 音乐", apple: "Apple Music" }[id],
           configured: !!adapters.configured[id], connected: !!session.connections[id], methods: adapters.configured[id] ? [id === "apple" ? "musickit" : "qr"] : [],
           reasonCode: adapters.configured[id] ? null : id === "apple" ? "APPLE_NOT_CONFIGURED" : "GATEWAY_NOT_CONFIGURED",
           account: publicAccount(session.connections[id]?.account), connectionId: session.connections[id]?.connectionId ?? null,
           reportScope: session.connections[id]?.reportScope ?? session.connections[id]?.connectionId ?? null,
         })) });
+      }
       const qrRoute = url.pathname.match(/^\/api\/auth\/(netease|qq)\/qr(?:\/([A-Za-z0-9_-]{43}))?$/);
       if (qrRoute && method === "POST" && !qrRoute[2]) {
         const provider = qrRoute[1]; await limit(`${id}:qr`, 8, 10 * 60_000);

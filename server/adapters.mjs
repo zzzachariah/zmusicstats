@@ -428,9 +428,9 @@ export function createAdapters(config, fetchImpl = fetch) {
         return appleDeveloperTokenUsable(appleDeveloper.getToken());
       },
     },
-    async account(provider, credential, { includeSubject = false } = {}) {
+    async account(provider, credential, { includeSubject = false, timeoutMs = 2500 } = {}) {
       // Profile loading is optional and has its own short deadline; 803 already completed login.
-      const options = { timeoutMs: Math.min(config.timeoutMs ?? 12_000, 2500) };
+      const options = { timeoutMs: Math.min(config.timeoutMs ?? 12_000, timeoutMs) };
       if (provider === "apple") return { nickname: "Apple Music 账号" };
       if (credential.kind !== "gateway") return null;
       if (provider === "netease") {
@@ -440,7 +440,10 @@ export function createAdapters(config, fetchImpl = fetch) {
       }
       const payload = await qq("/login/status", {}, credential.secret, options);
       const profile = payload.data?.profile;
-      return { ...publicAccount({ nickname: profile?.nickname ?? profile?.nick, avatarUrl: profile?.avatarUrl }),
+      // GetLoginUserInfo returns display fields under info; credential-derived
+      // top-level fields can be absent even though authorization is valid.
+      return { ...publicAccount({ nickname: profile?.info?.nick || profile?.info?.nickname || profile?.nickname || profile?.nick,
+        avatarUrl: profile?.info?.logo || profile?.info?.avatarUrl || profile?.avatarUrl }),
         ...(includeSubject && (profile?.musicid ?? profile?.uin) ? { subject: String(profile.musicid ?? profile.uin) } : {}) };
     },
     async appleConfig() {

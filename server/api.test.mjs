@@ -472,6 +472,15 @@ test("NetEase and QQ profile parsing uses documented safe nickname fields", asyn
   assert.deepEqual(await adapters.account("apple", { kind: "musickit" }), { nickname: "Apple Music 账号" });
 });
 
+test("QQ nested login info supplies its display name without leaking profile fields", async () => {
+  const adapters = createAdapters({ qqBase: "http://localhost:3201" }, async () => Response.json({ code: 200,
+    data: { profile: { musicid: 42, info: { nick: "嵌套昵称", logo: "https://y.gtimg.cn/avatar.jpg", privateField: "not-public" } } },
+  }));
+  assert.deepEqual(await adapters.account("qq", { kind: "gateway", secret: "fixture" }), {
+    nickname: "嵌套昵称", avatarUrl: "https://y.gtimg.cn/avatar.jpg",
+  });
+});
+
 test("disconnect while a report is loading cannot cache or return the previous account result", async (t) => {
   let release, started;
   const pending = new Promise((resolve) => {

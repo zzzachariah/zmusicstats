@@ -421,7 +421,7 @@ function LiveConnections({
         </div>)}
       </div>}
       {qr && <div className={`qr-section${mobileLayout && qrActive ? " qr-section-mobile-app" : ""}`}>
-        {qr.state === "connected" ? <div className="qr-complete" role="status"><Check size={42} aria-hidden="true" /><strong>{t.connected}</strong><span>{t.syncing}</span></div>
+        {qr.state === "connected" ? <div className="qr-complete" role="status"><Check size={42} aria-hidden="true" /><strong>{t.connected}</strong>{syncing && <span>{t.syncing}</span>}</div>
           : qr.state === "expired" ? <div className="qr-complete" role="status"><p>{t.qrExpired}</p><button className="button" disabled={!!busy || syncing} onClick={() => void connect(qr.provider)}><RefreshCw size={16} aria-hidden="true" />{t.retry}</button></div>
             : <div className="qr-visual" hidden={!qrVisible}>
               <div className="qr-paper"><img src={qr.qrImage} width="200" height="200" alt={`${t[qr.provider]} — ${t.connectButton}`} /></div>
