@@ -416,7 +416,7 @@ function LiveConnections({
         {qrActive && mobileLayout && <div className="mobile-login-tools">
           <strong>{qr.provider === "netease" ? (language === "zh" ? "先保存二维码，再打开扫一扫" : "Save the QR, then open the scanner") : (language === "zh" ? "授权后，返回此浏览器" : "After authorization, return to this browser")}</strong>
           <p>{qr.provider === "netease"
-            ? (language === "zh" ? "网易云目前不能直接跳到本次授权页。保存下方二维码后，打开扫一扫，从相册识别并确认，再回到此浏览器。" : "NetEase cannot open this authorization directly. Save the QR below, open its scanner, select the saved image, and confirm. Then return to this browser.")
+            ? (language === "zh" ? "网易云目前不能直接跳到本次授权页。长按下方二维码存储到照片，或截图保存；再打开扫一扫，从相册识别并确认，最后返回此浏览器。" : "NetEase cannot open this authorization directly. Long-press the QR to save it to Photos, or take a screenshot. Open its scanner, select that image, and confirm. Then return to this browser.")
             : (language === "zh" ? "在 QQ 音乐确认后，点手机左上角的返回浏览器入口；没有该入口时，从应用切换器回到原来的浏览器。本页会自动确认连接，无需重新扫码。" : "Confirm in QQ Music, then tap the system’s return-to-browser link at the top left, or switch back to your original browser. This page checks automatically; no new scan is needed.")}</p>
           {qr.mobileAuth?.status === "available" ? <a className="small-button mobile-app-authorize" href={qr.mobileAuth.url}
             target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer"
