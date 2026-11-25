@@ -6,7 +6,6 @@ import { Modal } from "./Modal";
 import { PlatformIcon } from "./PlatformIcon";
 import { copy, type Language } from "../lib/i18n";
 import type { PlatformId } from "../lib/report";
-import { prepareAppleMusic, connectAppleMusic } from "../lib/apple-music";
 import { connectionErrorMessage, connectionResponseError } from "../lib/connection-errors";
 import { canOpenMobileAuth, readMobileAuth, mobileLaunchScheme, type MobileAuth } from "../lib/mobile-auth";
 import { IS_BROWSER_STORAGE, IS_UI_PREVIEW, UI_PREVIEW_LABEL, UI_PREVIEW_CONNECTION_REASON } from "../lib/runtime-mode";
@@ -56,8 +55,8 @@ function PreviewConnections({ language, onClose, open = true, embedded = false }
     <div className="connection-list">
       {(["netease", "qq", "apple"] as const).map(id => <div className="connection-card" key={id}>
         <div className={`platform-icon ${id}`} aria-hidden="true"><PlatformIcon platform={id} size={40} /></div>
-        <div className="connection-description"><strong>{t[id]}</strong><span className="connection-availability">{language === "zh" ? "真实连接未启用" : "Real connections disabled"}</span></div>
-        <button type="button" className="small-button connection-control" disabled><Link2 size={16} aria-hidden="true" />{language === "zh" ? "预览模式" : "Preview only"}</button>
+        <div className="connection-description"><strong>{t[id]}</strong><span className="connection-availability">{id === "apple" ? (language === "zh" ? "暂不支持" : "Not supported yet") : (language === "zh" ? "真实连接未启用" : "Real connections disabled")}</span></div>
+        <button type="button" className="small-button connection-control" disabled><Link2 size={16} aria-hidden="true" />{id === "apple" ? (language === "zh" ? "暂不支持" : "Unavailable") : (language === "zh" ? "预览模式" : "Preview only")}</button>
         <p className="connection-help">{UI_PREVIEW_CONNECTION_REASON[language]}</p>
       </div>)}
     </div>
@@ -89,7 +88,6 @@ function LiveConnections({
   const checkQrNow = useRef<(() => void) | null>(null);
   const [error, setError] = useState("");
   const [refreshError, setRefreshError] = useState("");
-  const [apple, setApple] = useState<Awaited<ReturnType<typeof prepareAppleMusic>> | null>(null);
   const mounted = useRef(false);
   const actionSequence = useRef(0);
   const refreshSequence = useRef(0);
@@ -169,16 +167,6 @@ function LiveConnections({
     void apiFetch(`/api/auth/${provider}/qr/${encodeURIComponent(id)}`, { method: "DELETE", keepalive: true }).finally(() => setQr(current => current?.id === id ? null : current));
   }, [open, qr]);
 
-  const appleConfigured = providers.some(provider => provider.id === "apple" && provider.configured);
-  useEffect(() => {
-    if (!open || !appleConfigured || apple) return;
-    let cancelled = false;
-    prepareAppleMusic()
-      .then(instance => { if (!cancelled) setApple(instance); })
-      .catch(error => { if (!cancelled) setError(connectionErrorMessage(error,languageRef.current)); });
-    return () => { cancelled = true; };
-  }, [open, appleConfigured, apple]);
-
   const finishConnection = useCallback(async (
     key: string, provider: PlatformId, attempt: number, signal: AbortSignal,
   ) => {
@@ -191,9 +179,9 @@ function LiveConnections({
     await refresh(signal);
     if (!mounted.current || signal.aborted || attempt !== actionSequence.current) return;
     setBusy(null);
-    setTab("history");
+    setTab(embedded ? "connections" : "history");
     onSyncRef.current(provider);
-  }, [refresh]);
+  }, [refresh, embedded]);
 
   // Depend on the QR identity, not its state. Marking a login connected must not abort
   // the nickname refresh and automatic report sync that follow the successful poll.
@@ -303,7 +291,7 @@ function LiveConnections({
     }
     appLaunchQr.current = challenge.id;
     appLeftPage.current = false;
-    setShowQrFallback(false);
+    setShowQrFallback(challenge.provider === "netease");
     setMobileStatus("opening");
     clearTimeout(appLaunchTimer.current);
     appLaunchTimer.current = setTimeout(() => {
@@ -320,6 +308,7 @@ function LiveConnections({
   };
 
   const connect = async (provider: PlatformId) => {
+    if (provider === "apple") return;
     const attempt = ++actionSequence.current;
     actionController.current?.abort();
     const controller = new AbortController();
@@ -327,12 +316,6 @@ function LiveConnections({
     setBusy(provider); setError(""); setQr(null);
     appLaunchQr.current = null; appLeftPage.current = false; clearTimeout(appLaunchTimer.current); setMobileStatus("idle"); setShowQrFallback(false);
     try {
-      if (provider === "apple") {
-        if (!apple) throw new Error("APPLE_NOT_READY");
-        await connectAppleMusic(apple);
-        await finishConnection(`apple:${attempt}`, provider, attempt, controller.signal);
-        return;
-      }
       const response = await apiFetch(`/api/auth/${provider}/qr`, {
         method: "POST", headers: { "Content-Type": "application/json" }, body: "{}", signal: controller.signal,
       });
@@ -346,7 +329,9 @@ function LiveConnections({
         mobileAuth: readMobileAuth(provider, data.mobileAuth, data.expiresAt),
       };
       setQr(challenge);
-      if (mobileLayout) launchApp(challenge, true);
+      // A scanner cannot authorize this challenge until its QR has been saved or displayed.
+      if (mobileLayout && provider === "qq") launchApp(challenge, true);
+      else if (mobileLayout) setShowQrFallback(true);
     } catch (error) {
       if (mounted.current && !controller.signal.aborted && attempt === actionSequence.current) setError(connectionErrorMessage(error,languageRef.current));
     } finally {
@@ -403,25 +388,25 @@ function LiveConnections({
       <section id={`${tabId}-connections-panel`} role="tabpanel" aria-labelledby={`${tabId}-connections-tab`} hidden={tab !== "connections"}>
       {loading && <div className={`loading-state${providers.length ? " connection-refreshing" : ""}`} role="status"><LoaderCircle className="loading-spin" aria-hidden="true" />{t.loading}</div>}
       {providers.length > 0 && <div className="connection-list">
-        {providers.map(provider => <div className={`connection-card${provider.connected ? " is-connected" : ""}`} key={provider.id}>
+        {providers.map(provider => <div className={`connection-card${provider.connected ? " is-connected" : ""}${provider.id === "apple" ? " is-unsupported" : ""}`} key={provider.id}>
           <div className={`platform-icon ${provider.id}`} aria-hidden="true"><PlatformIcon platform={provider.id} size={40} /></div>
           <div className="connection-description">
             <strong>{t[provider.id]}</strong>
             {provider.connected ? <div className="connection-account">
               <span className="connection-nickname">{provider.account?.nickname?.trim() || (language === "zh" ? "账号已授权" : "Account authorized")}</span>
               <span className="connection-status"><Check size={12} aria-hidden="true" />{t.connected}</span>
-            </div> : <span className="connection-availability">{provider.configured ? t.notConnected : t.unavailable}</span>}
+            </div> : <span className="connection-availability">{provider.id === "apple" ? (language === "zh" ? "暂不支持" : "Not supported yet") : provider.configured ? t.notConnected : t.unavailable}</span>}
           </div>
           {provider.connected ? <button className="quiet-button connection-control" disabled={!!busy || syncing} onClick={() => void disconnect(provider.id)} aria-label={`${t.disconnect} ${t[provider.id]}`}>{busy === provider.id ? <LoaderCircle size={15} className="loading-spin" aria-hidden="true" /> : null}{t.disconnect}</button>
-            : <button className="small-button connection-control" disabled={!provider.configured || !!busy || syncing || (provider.id === "apple" && !apple)} onClick={() => void connect(provider.id)}>
+            : <button className="small-button connection-control" disabled={provider.id === "apple" || !provider.configured || !!busy || syncing} onClick={() => void connect(provider.id)}>
               {busy === provider.id ? <LoaderCircle size={16} className="loading-spin" aria-hidden="true" /> : provider.id === "apple" ? <Link2 size={16} aria-hidden="true" /> : mobileLayout ? <ExternalLink size={16} aria-hidden="true" /> : <QrCode size={16} aria-hidden="true" />}
-              {provider.id === "apple" ? (language === "zh" ? "Apple 账号授权" : embedded ? "Authorize" : "Authorize Apple") : mobileLayout ? (language === "zh" ? "打开 App 连接" : "Connect") : embedded && language === "en" ? "Connect" : t.connectButton}
+              {provider.id === "apple" ? (language === "zh" ? "暂不支持" : "Unavailable") : mobileLayout ? (language === "zh" ? provider.id === "netease" ? "扫码连接" : "打开 App" : provider.id === "netease" ? "Use QR" : "Open app") : embedded && language === "en" ? "Connect" : t.connectButton}
             </button>}
-          {!provider.configured && <p className="connection-help">{t.unavailableHelp}</p>}
+          {!provider.configured && provider.id !== "apple" && <p className="connection-help">{t.unavailableHelp}</p>}
         </div>)}
       </div>}
       {qr && <div className={`qr-section${mobileLayout && qrActive ? " qr-section-mobile-app" : ""}`}>
-        {qr.state === "connected" ? <div className="qr-complete" role="status"><Check size={42} aria-hidden="true" /><strong>{t.connected}</strong>{syncing && <span>{t.syncing}</span>}</div>
+        {qr.state === "connected" ? <div className={`qr-complete${embedded ? " qr-complete-setup" : ""}`} role="status"><Check size={embedded ? 20 : 42} aria-hidden="true" /><strong>{t[qr.provider]} · {t.connected}</strong>{syncing ? <span>{t.syncing}</span> : embedded && <span>{language === "zh" ? "还可以连接其他平台，准备好后点下方继续。" : "Connect another platform, or continue below when ready."}</span>}<button className="text-button" onClick={()=>setQr(null)}>{language === "zh" ? "返回平台列表" : "Back to platforms"}</button></div>
           : qr.state === "expired" ? <div className="qr-complete" role="status"><p>{t.qrExpired}</p><button className="button" disabled={!!busy || syncing} onClick={() => void connect(qr.provider)}><RefreshCw size={16} aria-hidden="true" />{t.retry}</button></div>
             : <div className="qr-visual" hidden={!qrVisible}>
               <div className="qr-paper"><img src={qr.qrImage} width="200" height="200" alt={`${t[qr.provider]} — ${t.connectButton}`} /></div>
@@ -429,10 +414,10 @@ function LiveConnections({
               <p>{t.qrHint}</p>
             </div>}
         {qrActive && mobileLayout && <div className="mobile-login-tools">
-          <strong>{language === "zh" ? "先在 App 中继续" : "Continue in the app"}</strong>
+          <strong>{qr.provider === "netease" ? (language === "zh" ? "先保存二维码，再打开扫一扫" : "Save the QR, then open the scanner") : (language === "zh" ? "授权后，返回此浏览器" : "After authorization, return to this browser")}</strong>
           <p>{qr.provider === "netease"
-            ? (language === "zh" ? "网易云会尝试打开扫一扫。此入口仍需识别二维码；返回本页后可保存图片，再从扫一扫的相册中选择。" : "NetEase opens its scanner. It still needs the QR image: return here to save it, then select it from the scanner’s photo library.")
-            : (language === "zh" ? "在 QQ 音乐中确认本次连接。返回后自动检查；未完成时会展开同一次连接的二维码。" : "Confirm this connection in QQ Music. We check when you return and reveal the same QR if authorization is incomplete.")}</p>
+            ? (language === "zh" ? "网易云目前不能直接跳到本次授权页。保存下方二维码后，打开扫一扫，从相册识别并确认，再回到此浏览器。" : "NetEase cannot open this authorization directly. Save the QR below, open its scanner, select the saved image, and confirm. Then return to this browser.")
+            : (language === "zh" ? "在 QQ 音乐确认后，点手机左上角的返回浏览器入口；没有该入口时，从应用切换器回到原来的浏览器。本页会自动确认连接，无需重新扫码。" : "Confirm in QQ Music, then tap the system’s return-to-browser link at the top left, or switch back to your original browser. This page checks automatically; no new scan is needed.")}</p>
           {qr.mobileAuth?.status === "available" ? <a className="small-button mobile-app-authorize" href={qr.mobileAuth.url}
             target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer"
             onClick={event => { if (!launchApp(qr)) event.preventDefault(); }}>
@@ -446,7 +431,7 @@ function LiveConnections({
           <div className="mobile-auth-actions">
             <button className="small-button" disabled={mobileStatus === "checking"} onClick={() => checkQrNow.current?.()}>
               {mobileStatus === "checking" ? <LoaderCircle size={15} className="loading-spin" aria-hidden="true" /> : <RefreshCw size={15} aria-hidden="true" />}
-              {language === "zh" ? "我已确认，检查连接" : "Check connection"}
+              {language === "zh" ? "我已返回，检查连接" : "I’m back · check connection"}
             </button>
             {!showQrFallback && <button className="small-button" onClick={() => { clearTimeout(appLaunchTimer.current); setShowQrFallback(true); setMobileStatus("idle"); }}>
               <QrCode size={15} aria-hidden="true" />{language === "zh" ? "改用二维码" : "Use QR instead"}
@@ -459,7 +444,7 @@ function LiveConnections({
       {refreshError && <div className="connection-refresh-error" role="alert"><p className="inline-error">{refreshError}</p><button className="small-button" disabled={loading} onClick={() => void refresh()}>{loading ? <LoaderCircle size={15} className="loading-spin" aria-hidden="true" /> : <RefreshCw size={15} aria-hidden="true" />}{t.retry}</button></div>}
       {error && <p className="inline-error" role="alert">{error}</p>}
       {!connected && <p className="modal-footnote">{t.noAccount}</p>}
-      {connected && !qrActive && <button className="text-button connection-details-link" onClick={() => setTab("history")}>
+      {connected && !embedded && !qrActive && <button className="text-button connection-details-link" onClick={() => setTab("history")}>
         <ListChecks size={15} aria-hidden="true" />{language === "zh" ? "查看数据读取详情" : "View import details"}
       </button>}
       </section>

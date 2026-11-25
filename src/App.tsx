@@ -1,4 +1,5 @@
 import { apiFetch, savedBrowserReports, clearLocalReports } from "./lib/browser-api";
+import { restoredConnectionEntry } from "./lib/connection-entry";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import {
@@ -545,9 +546,9 @@ export default function App() {
         if (controller.signal.aborted || request !== liveRequest.current) return;
         if (Array.isArray(data.providers) && data.providers.some((provider: { connected?: unknown }) => provider?.connected === true)) {
           setConnectedProviders(data.providers.filter((provider: { connected?: unknown }) => provider?.connected === true).map((provider: { id: PlatformId }) => provider.id));
-          let periodPending = false;
-          try { periodPending = localStorage.getItem(PERIOD_PENDING_KEY) === "true" || !localStorage.getItem(PERSONAL_MONTHS_KEY); } catch { /* Storage is optional. */ }
-          if (periodPending) { setEntry("period"); return; }
+          let restoredEntry: "connections" | "period" | "report" = "connections";
+          try { restoredEntry = restoredConnectionEntry(localStorage.getItem(PERIOD_PENDING_KEY), !!localStorage.getItem(PERSONAL_MONTHS_KEY)); } catch { /* Storage is optional. */ }
+          if (restoredEntry !== "report") { setEntry(restoredEntry); return; }
           setEntry("report");
           clearTimeout(timeout);
           void syncReportRef.current(rememberedMonths(), true);
@@ -684,9 +685,18 @@ export default function App() {
     if (IS_UI_PREVIEW) return;
     if (provider) setConnectedProviders(current => [...new Set([...current, provider])]);
     if (entry === "connections" || entry === "period") {
-      try { localStorage.setItem(PERIOD_PENDING_KEY,"true"); } catch { /* Storage is optional. */ }
-      setEntry("period"); setModal(null); setConnectionTab("connections");
+      try { localStorage.setItem(PERIOD_PENDING_KEY,"connections"); } catch { /* Storage is optional. */ }
+      setEntry("connections"); setModal(null); setConnectionTab("connections");
     } else void connectAndRead(provider);
+  };
+  const chooseFirstPeriod = () => {
+    if (!connectedProviders.length) return;
+    try { localStorage.setItem(PERIOD_PENDING_KEY,"period"); } catch { /* Storage is optional. */ }
+    setEntry("period");
+  };
+  const returnToConnections = () => {
+    try { localStorage.setItem(PERIOD_PENDING_KEY,"connections"); } catch { /* Storage is optional. */ }
+    setConnectionTab("connections"); setEntry("connections");
   };
   const startFirstReport = (months: string[] | null) => {
     if (IS_UI_PREVIEW) return;
@@ -778,9 +788,9 @@ export default function App() {
         {entry === "checking" ? <div className="connection-welcome checking" role="status"><Disc3 className="loading-spin" size={30} /><p>{language === "zh" ? "正在恢复你的音乐连接…" : "Restoring your music connections…"}</p></div> : entry === "connections" ? <section className="connection-welcome">
           <span className="eyebrow">{IS_UI_PREVIEW ? UI_PREVIEW_LABEL[language] : "FIRST, YOUR MUSIC."}</span>
           <h1>{IS_UI_PREVIEW ? language === "zh" ? <>先看看，<br /><em>音乐的另一面。</em></> : <>A preview of<br /><em>your music story.</em></> : language === "zh" ? <>先连接，<br /><em>再听见自己。</em></> : <>Connect your music.<br /><em>Discover your story.</em></>}</h1>
-          <p>{IS_UI_PREVIEW ? language === "zh" ? "这是使用虚构听歌数据的线上界面预览。可以探索完整示例报告与分享海报；真实音乐账号连接请使用本机版。" : "This online UI preview uses fictional listening data. Explore a full sample report and sharing posters; use the local app to connect real music accounts." : language === "zh" ? "连接音乐平台，把可读取的历史与曲风偏爱，收进同一张唱片。" : "Connect your music accounts. Bring your listening history and favorite sounds together."}</p>
+          <p>{IS_UI_PREVIEW ? language === "zh" ? "这是使用虚构听歌数据的线上界面预览。可以探索完整示例报告与分享海报；真实音乐账号连接请使用本机版。" : "This online UI preview uses fictional listening data. Explore a full sample report and sharing posters; use the local app to connect real music accounts." : language === "zh" ? "可以连接多个音乐平台，准备好后点下方继续。" : "Connect one or more music accounts, then continue when you’re ready."}</p>
           <div className="welcome-steps"><span><b>01</b>{IS_UI_PREVIEW ? language === "zh" ? "浏览示例" : "Explore" : language === "zh" ? "连接平台" : "Connect"}</span><i /><span><b>02</b>{language === "zh" ? "选择时段" : "Choose a period"}</span><i /><span><b>03</b>{IS_UI_PREVIEW ? language === "zh" ? "导出海报" : "Export" : language === "zh" ? "生成报告" : "Discover"}</span></div>
-        </section> : entry === "period" ? <PeriodWelcome language={language} onContinue={startFirstReport} onBack={()=>{setConnectionTab("connections");setEntry("connections");}} /> : <>
+        </section> : entry === "period" ? <PeriodWelcome language={language} onContinue={startFirstReport} onBack={returnToConnections} /> : <>
           {preparing && !allowPartial && reportToolbar}
           {preparing && !allowPartial ? <ReportLoading language={language} phase={awaitingHistory||historyActive?"history":syncing?"reports":"metadata"}
             detail={awaitingHistory||historyActive?historyProgress.detail:syncing?syncProgress:(language==="zh"?"正在核对每首歌曲的曲风、封面和长度。":"Checking each song’s genres, artwork, and length.")}
@@ -855,7 +865,7 @@ export default function App() {
         language={language} onClose={closeModal} onSync={accountConnected}
         syncing={syncing || awaitingHistory || historyActive || metadataProgress.state==="loading"} onDisconnected={disconnectPlatform}
       />
-      {entry === "connections" && <div className="welcome-demo">{hasSavedReports && <button className="small-button" onClick={()=>void openSavedReports()}>{language === "zh" ? "查看本机报告" : "View saved reports"}</button>}{connectedProviders.length > 0 && <button className="button primary" onClick={()=>setEntry("period")}>{language === "zh" ? "已连接，选择统计时段" : "Connected · choose a period"}</button>}<button className="text-button" onClick={showDemo}>{language === "zh" ? "先看看示例报告 ↗" : "Explore a sample report ↗"}</button></div>}
+      {entry === "connections" && <div className="welcome-demo">{hasSavedReports && <button className="small-button" onClick={()=>void openSavedReports()}>{language === "zh" ? "查看本机报告" : "View saved reports"}</button>}<button className="button primary welcome-continue" disabled={!connectedProviders.length} onClick={chooseFirstPeriod}>{language === "zh" ? "继续，选择统计时段" : "Continue · choose a period"}</button><button className="text-button" onClick={showDemo}>{language === "zh" ? "先看看示例报告 ↗" : "Explore a sample report ↗"}</button></div>}
       {entry === "connections" && <footer className="welcome-footer"><span>Created by Zach <small>© {new Date().getFullYear()} zmusicstats</small></span><div><button className="text-button" onClick={()=>setModal("privacy")}>{language === "zh" ? "隐私与数据" : "Privacy & data"}</button><a href="https://github.com/zzzachariah/zmusicstats" target="_blank" rel="noreferrer">GitHub</a><a href="https://github.com/zzzachariah/zmusicstats/issues" target="_blank" rel="noreferrer">Contact</a></div></footer>}
       <AnimatePresence>
         {modal === "months" && <MonthPicker language={language} selected={selectedMonths} demo={demo} onClose={closeModal} onApply={changeMonths} />}

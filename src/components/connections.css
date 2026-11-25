@@ -65,6 +65,13 @@
 .connections-content .connection-description {
   min-width: 0;
 }
+.connections-content .platform-icon { display:flex; align-items:center; justify-content:center; }
+.connections-content .platform-icon > .music-platform-icon { width:100% !important; height:100% !important; max-width:100%; max-height:100%; }
+.connections-content .connection-card.is-unsupported { border-style:dashed; }
+.connections-content .is-unsupported .platform-icon { opacity:.6; }
+.connections-content .qr-complete-setup { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:8px; padding:4px 0; }
+.connections-content .qr-complete-setup > span { width:100%; font-size:12px; }
+.connections-content .qr-complete-setup > .text-button { min-height:36px; }
 .connections-content .connection-description strong {
   font-size: 15px;
   line-height: 1.45;

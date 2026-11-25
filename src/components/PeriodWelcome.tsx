@@ -1,5 +1,5 @@
 import { useId, useState, type FormEvent } from "react";
-import { ArrowLeft, ArrowRight, CalendarDays, Check, Disc3, Library } from "lucide-react";
+import { ArrowLeft, ArrowRight, CalendarDays, Check, ChevronDown, Disc3, Library } from "lucide-react";
 import type { Locale } from "../lib/report";
 import { latestCompletedMonth, MAX_PERIOD_MONTHS, MIN_REPORT_MONTH, recentCompletedMonths, validatePeriodSelection, type PeriodSelectionError } from "../lib/period-selection";
 import "./period-welcome.css";
@@ -15,6 +15,27 @@ const errors: Record<PeriodSelectionError, { zh: string; en: string }> = {
 
 function monthLabel(month: string, language: Locale): string {
   return new Intl.DateTimeFormat(language === "zh" ? "zh-CN" : "en", { year: "numeric", month: "short", timeZone: "UTC" }).format(new Date(`${month}-01T12:00:00Z`));
+}
+
+function MonthField({ id, name, label, value, latest, language, invalid, describedBy, onChange }: {
+  id: string; name: string; label: string; value: string; latest: string; language: Locale;
+  invalid: boolean; describedBy: string; onChange: (month: string) => void;
+}) {
+  const zh = language === "zh", year = value.slice(0,4), month = value.slice(5);
+  const years = Array.from({length: Number(latest.slice(0,4)) - Number(MIN_REPORT_MONTH.slice(0,4)) + 1}, (_, index) => Number(latest.slice(0,4)) - index);
+  return <div className="period-month-field" role="group" aria-labelledby={`${id}-label`}>
+    <span id={`${id}-label`}>{label}</span>
+    <div className="period-month-control">
+      <label><select name={`${name}Year`} value={year} aria-label={`${label} · ${zh ? "年份" : "year"}`} aria-invalid={invalid} aria-describedby={describedBy}
+        onChange={event=>{const nextYear=event.currentTarget.value; onChange(`${nextYear}-${nextYear === latest.slice(0,4) && month > latest.slice(5) ? latest.slice(5) : month}`);}}>
+        {years.map(item=><option key={item} value={item}>{item}{zh ? " 年" : ""}</option>)}
+      </select><ChevronDown size={14} aria-hidden="true" /></label>
+      <label><select name={`${name}Month`} value={month} aria-label={`${label} · ${zh ? "月份" : "month"}`} aria-invalid={invalid} aria-describedby={describedBy}
+        onChange={event=>onChange(`${year}-${event.currentTarget.value}`)}>
+        {Array.from({length:12},(_, index)=>{const number=String(index+1).padStart(2,"0"); return <option key={number} value={number} disabled={`${year}-${number}` > latest}>{zh ? `${index+1} 月` : new Intl.DateTimeFormat("en",{month:"short",timeZone:"UTC"}).format(new Date(`2000-${number}-01T12:00:00Z`))}</option>;})}
+      </select><ChevronDown size={14} aria-hidden="true" /></label>
+    </div>
+  </div>;
 }
 
 export function PeriodWelcome({ language, onContinue, onBack }: {
@@ -35,11 +56,10 @@ export function PeriodWelcome({ language, onContinue, onBack }: {
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (allHistory) { onContinue(null); return; }
-    // Native month controls can update before React receives a change event.
+    // Read the actual select values so browser autofill is validated as well.
     const form = new FormData(event.currentTarget);
-    const startValue = form.get("startMonth"), endValue = form.get("endMonth");
-    const currentStart = typeof startValue === "string" ? startValue : "";
-    const currentEnd = typeof endValue === "string" ? endValue : "";
+    const currentStart = `${form.get("startYear") ?? ""}-${form.get("startMonth") ?? ""}`;
+    const currentEnd = `${form.get("endYear") ?? ""}-${form.get("endMonth") ?? ""}`;
     const currentSelection = validatePeriodSelection(currentStart, currentEnd, latestCompletedMonth());
     setStart(currentStart); setEnd(currentEnd);
     if (!currentSelection.error && currentSelection.months.length) onContinue(currentSelection.months);
@@ -61,8 +81,8 @@ export function PeriodWelcome({ language, onContinue, onBack }: {
 
       <fieldset className="period-range" disabled={allHistory}>
         <legend>{zh ? "或指定起止月份" : "Or choose a month range"}</legend>
-        <label htmlFor={`${id}-start`}><span>{zh ? "开始月份" : "From"}</span><input id={`${id}-start`} name="startMonth" type="month" value={start} min={MIN_REPORT_MONTH} max={latest} required aria-invalid={!!error} aria-describedby={`${id}-scope${error ? ` ${id}-error` : ""}`} onInput={event => setStart(event.currentTarget.value)} onChange={event => setStart(event.currentTarget.value)} /></label>
-        <label htmlFor={`${id}-end`}><span>{zh ? "结束月份" : "To"}</span><input id={`${id}-end`} name="endMonth" type="month" value={end} min={MIN_REPORT_MONTH} max={latest} required aria-invalid={!!error} aria-describedby={`${id}-scope${error ? ` ${id}-error` : ""}`} onInput={event => setEnd(event.currentTarget.value)} onChange={event => setEnd(event.currentTarget.value)} /></label>
+        <MonthField id={`${id}-start`} name="start" label={zh ? "开始月份" : "From"} value={start} latest={latest} language={language} invalid={!!error} describedBy={`${id}-scope${error ? ` ${id}-error` : ""}`} onChange={setStart} />
+        <MonthField id={`${id}-end`} name="end" label={zh ? "结束月份" : "To"} value={end} latest={latest} language={language} invalid={!!error} describedBy={`${id}-scope${error ? ` ${id}-error` : ""}`} onChange={setEnd} />
       </fieldset>
 
       <div className={`period-selection-summary${allHistory ? " is-all" : ""}`} aria-live="polite">

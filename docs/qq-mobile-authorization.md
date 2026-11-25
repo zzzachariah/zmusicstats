@@ -16,7 +16,7 @@ These are public implementation details, not a claim that Tencent provides this 
 
 ## Frontend behavior
 
-- On phones, connecting first attempts the validated app scheme after creating a real challenge. An explicit tap on the Universal Link is also available if the browser blocks that attempt. The report page remains available for fallback.
+- On phones, QQ connecting first attempts the validated app scheme after creating a real challenge. An explicit tap on the Universal Link is also available if the browser blocks that attempt. The report page remains available for fallback. NetEase shows its QR first because its verified app route opens a scanner rather than a request-bound authorization screen.
 - QR is initially collapsed on phones. If the browser stays visible for 3.5 seconds, the launch throws, a polling request fails, or the user returns without authorization, the same QR is revealed. Users can reveal it immediately. Desktop keeps the QR visible.
 - The frontend accepts only the expected official host/path, nested app method, authorization page, and a nonempty challenge parameter. It also requires the link expiry to match the QR expiry.
 - The app button never creates another QR. It sets an opening/pending UI state only.
@@ -25,11 +25,11 @@ These are public implementation details, not a claim that Tencent provides this 
 - Missing app confirmation never changes the account to connected. If the app did not visibly open, the UI keeps a retry/check action and QR fallback.
 - The same `Connections` component can render embedded or in a modal; the history portal target stays stable across that change.
 
-## iPhone verification still required
+## iPhone verification
 
 Apple documents that tapping a Universal Link and entering it in the address bar are different actions. Same-domain navigation may remain in Safari, user choices can affect handling, and other browsers may behave differently. See [Apple's Universal Link troubleshooting](https://developer.apple.com/documentation/technotes/tn3155-debugging-universal-links).
 
-The official link structure and challenge binding have been checked. An iPhone end-to-end run is still needed to establish that the installed QQ Music version accepts this target, shows the correct confirmation screen, and returns a successful status to the original browser session. Merely landing on the app home screen is a failure, not completion.
+On 2026-11-25, the user reported successful QQ Music authorization on an iPhone, and confirmed NetEase opens its scanner. Automatic return to the browser is not supported by a verified callback: the checked QQ authorization bundle closes its own webview on the success button and does not consume an arbitrary website return URL. The website now explains the system return-to-browser affordance or app switcher, checks the existing challenge on return, and stays in platform selection until the user presses Continue. No automatic cross-app return is claimed.
 
 Acceptance cases: successful confirmation; cancellation in QQ Music; no app installed; expired challenge; return without confirming; network interruption; Safari versus an embedded browser. No device success is claimed before those checks.
 
@@ -37,6 +37,6 @@ Frontend unit coverage checks accepted/rejected link targets, missing metadata, 
 
 ## NetEase scanner handoff
 
-The official [NetEase mobile bundle](https://s3.music.126.net/mobile-new/app.8330d360.js), fetched from the script referenced by its mobile login page on 2026-11-25, exposes `orpheus://scancode`. Its [AASA](https://music.163.com/.well-known/apple-app-site-association) lists `/m/applink/`, and the mobile bundle constructs that Universal Link with an encoded `scheme` parameter. These support a scanner handoff only: no request-bound direct authorization scheme has been verified.
+The official [NetEase mobile bundle](https://s3.music.126.net/mobile-new/app.8330d360.js), fetched from the script referenced by its mobile login page on 2026-11-25, exposes `orpheus://scancode`. Its [AASA](https://music.163.com/.well-known/apple-app-site-association) lists `/m/applink/`, and the mobile bundle constructs that Universal Link with an encoded `scheme` parameter. These support a scanner handoff only: no request-bound direct authorization scheme has been verified. The user confirmed this scanner destination on their iPhone.
 
-NetEase uses the same app-first/fallback interface, explicitly labeled “Open NetEase scanner.” Returning without authorization reveals the QR to save/select from the app's photo scanner or scan from another screen. Opening this entry is never reported as an authorized account, and same-phone image scanning still needs device testing.
+NetEase now presents the QR to save before the explicit “Open NetEase scanner” action. Its instructions describe photo-library recognition or scanning from another screen. Opening this entry is never reported as an authorized account, and same-phone image recognition still needs device testing.
