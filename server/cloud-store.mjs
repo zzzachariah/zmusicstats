@@ -35,6 +35,8 @@ export function createTransientStore({ secret, namespace = "production", sdk = {
           allowOverwrite: !!etag, ...(etag ? { ifMatch: etag } : {}), contentType: "application/json", ttlDays: 1 });
         return next;
       } catch (error) {
+        console.warn("login-store-write", { name: error?.name, reason: /rate|too many/i.test(error?.message ?? "") ? "rate-limit" : /etag|match|precondition/i.test(error?.message ?? "") ? "etag-conflict" : /already exists/i.test(error?.message ?? "") ? "already-exists" : /overwrite/i.test(error?.message ?? "") ? "overwrite" : "storage-error" });
+        if (/RateLimited/.test(error?.name ?? "") || /too many|once per|once every/i.test(error?.message ?? "")) { await new Promise(resolve => setTimeout(resolve, 1100 + attempt * 200)); continue; }
         if (!/Precondition|AlreadyExists|Conflict/.test(error?.name ?? "") && !/already exists/i.test(error?.message ?? "")) throw error;
       }
     }
