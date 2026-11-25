@@ -22,7 +22,7 @@ Cloud Functions execute only bounded requests. There is no Workflow, Supabase da
 
 Server-only: `CLOUD_SESSION_SECRET` (32 random bytes encoded base64url), `QQ_SESSION_SECRET`, `APPLE_MUSIC_TEAM_ID`, `APPLE_MUSIC_KEY_ID`, `APPLE_MUSIC_PRIVATE_KEY`, and the private store's injected credentials. Never use VITE_ prefixes for these. Never upload the developer's `.env`, `.p8`, `.auth-state`, `work/` or personal listening reports.
 
-Build with `ZMUSICSTATS_CLOUD=true`; `/api/*` uses `api/[...path].mjs`. The local development launcher remains available and retains its existing local encrypted-file behavior.
+Build with `ZMUSICSTATS_CLOUD=true`; `/api/*` uses `api/relay.mjs`. The local development launcher remains available and retains its existing local encrypted-file behavior.
 
 ## Release validation
 

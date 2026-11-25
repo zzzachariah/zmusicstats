@@ -366,7 +366,7 @@ function LiveConnections({
           {provider.connected ? <button className="quiet-button connection-control" disabled={!!busy || syncing} onClick={() => void disconnect(provider.id)} aria-label={`${t.disconnect} ${t[provider.id]}`}>{busy === provider.id ? <LoaderCircle size={15} className="loading-spin" aria-hidden="true" /> : null}{t.disconnect}</button>
             : <button className="small-button connection-control" disabled={!provider.configured || !!busy || syncing || (provider.id === "apple" && !apple)} onClick={() => void connect(provider.id)}>
               {busy === provider.id ? <LoaderCircle size={16} className="loading-spin" aria-hidden="true" /> : provider.id === "apple" ? <Link2 size={16} aria-hidden="true" /> : <QrCode size={16} aria-hidden="true" />}
-              {provider.id === "apple" ? (language === "zh" ? "Apple 账号授权" : "Authorize Apple") : t.connectButton}
+              {provider.id === "apple" ? (language === "zh" ? "Apple 账号授权" : embedded ? "Authorize" : "Authorize Apple") : embedded && language === "en" ? "Connect" : t.connectButton}
             </button>}
           {!provider.configured && <p className="connection-help">{t.unavailableHelp}</p>}
         </div>)}

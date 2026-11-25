@@ -15,7 +15,10 @@ export default async function api(request, response) {
     const origin = `https://${request.headers.host}`;
     const controller = new AbortController();
     response.once("close", () => { if (!response.writableEnded) controller.abort(); });
-    const input = new Request(new URL(request.url, origin), { method: request.method, headers: request.headers,
+    const url = new URL(request.url, origin);
+    const route = url.searchParams.get("__path");
+    if (route) { url.pathname = `/api/${route}`; url.searchParams.delete("__path"); }
+    const input = new Request(url, { method: request.method, headers: request.headers,
       body: ["GET", "HEAD"].includes(request.method) ? undefined : Buffer.concat(chunks), signal: controller.signal });
     const result = await handler(input);
     response.writeHead(result.status, Object.fromEntries(result.headers));

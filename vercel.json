@@ -7,12 +7,16 @@
     "hkg1"
   ],
   "functions": {
-    "api/[...path].mjs": {
+    "api/relay.mjs": {
       "maxDuration": 300,
       "includeFiles": "{server/**,node_modules/@neteasecloudmusicapienhanced/api/**}"
     }
   },
   "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "/api/relay?__path=:path*"
+    },
     {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
