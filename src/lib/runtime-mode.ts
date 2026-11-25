@@ -1,4 +1,6 @@
 declare const __ZMUSICSTATS_UI_PREVIEW__: boolean;
+declare const __ZMUSICSTATS_LOCAL_REPORTS__: boolean;
+export const IS_BROWSER_STORAGE = typeof __ZMUSICSTATS_LOCAL_REPORTS__ !== "undefined" && __ZMUSICSTATS_LOCAL_REPORTS__;
 
 /** A build-time mode, never controlled by a URL parameter or browser storage. */
 export const IS_UI_PREVIEW = typeof __ZMUSICSTATS_UI_PREVIEW__ !== "undefined" && __ZMUSICSTATS_UI_PREVIEW__;

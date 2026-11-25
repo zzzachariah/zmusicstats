@@ -1,3 +1,4 @@
+import { apiFetch } from "../lib/browser-api";
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Check, Link2, LoaderCircle, RefreshCw, QrCode, ExternalLink, Download, ListChecks } from "lucide-react";
@@ -116,7 +117,7 @@ function LiveConnections({
     if (signal?.aborted) controller.abort();
     const timeout = setTimeout(abort, 10000);
     try {
-      const response = await fetch("/api/connections", { signal: controller.signal });
+      const response = await apiFetch("/api/connections", { signal: controller.signal });
       if (!response.ok) throw new Error("CONNECTIONS_UNAVAILABLE");
       const data = await response.json();
       if (!Array.isArray(data.providers)) throw new Error("CONNECTIONS_INVALID");
@@ -214,7 +215,7 @@ function LiveConnections({
       if (Date.now() >= qrExpiresAt) { expire(); return; }
       polling = true;
       try {
-        const response = await fetch(`/api/auth/${qrProvider}/qr/${encodeURIComponent(qrId)}`, { signal: controller.signal });
+        const response = await apiFetch(`/api/auth/${qrProvider}/qr/${encodeURIComponent(qrId)}`, { signal: controller.signal });
         if (controller.signal.aborted || !currentAttempt()) return;
         if (response.status === 404 || response.status === 410) { expire(); return; }
         if (!response.ok) throw await connectionResponseError(response,"QR_CHECK_UNAVAILABLE");
@@ -286,7 +287,7 @@ function LiveConnections({
         await finishConnection(`apple:${attempt}`, provider, attempt, controller.signal);
         return;
       }
-      const response = await fetch(`/api/auth/${provider}/qr`, {
+      const response = await apiFetch(`/api/auth/${provider}/qr`, {
         method: "POST", headers: { "Content-Type": "application/json" }, body: "{}", signal: controller.signal,
       });
       if (!response.ok) throw await connectionResponseError(response,"QR_UNAVAILABLE");
@@ -312,7 +313,7 @@ function LiveConnections({
     actionController.current = controller;
     setBusy(id); setError(""); setQr(null);
     try {
-      const response = await fetch(`/api/connections/${id}`, { method: "DELETE", signal: controller.signal });
+      const response = await apiFetch(`/api/connections/${id}`, { method: "DELETE", signal: controller.signal });
       if (!response.ok) throw await connectionResponseError(response,"DISCONNECT_FAILED");
       if (!mounted.current || controller.signal.aborted || attempt !== actionSequence.current) return;
       setProviders(current => current.map(item => item.id === id ? { ...item, connected: false, account: null } : item));

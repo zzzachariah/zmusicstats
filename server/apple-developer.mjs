@@ -46,7 +46,8 @@ function loadPrivateKey(filename) {
  */
 export function createAppleDeveloperTokenProvider(config, { now = Date.now } = {}) {
   let cached = null;
-  const canSign = typeof config.appleMusicKeyPath === "string" && !!config.appleMusicKeyPath.trim() &&
+  const canSign = ((typeof config.appleMusicKeyPath === "string" && !!config.appleMusicKeyPath.trim()) ||
+    (typeof config.appleMusicPrivateKey === "string" && config.appleMusicPrivateKey.length <= 16_384)) &&
     /^[A-Z0-9]{10}$/.test(config.appleMusicTeamId ?? "") &&
     /^[A-Z0-9]{10}$/.test(config.appleMusicKeyId ?? "");
 
@@ -56,10 +57,12 @@ export function createAppleDeveloperTokenProvider(config, { now = Date.now } = {
       return cached.token;
     if (canSign) {
       try {
-        const key = loadPrivateKey(config.appleMusicKeyPath);
+        const key = config.appleMusicPrivateKey ? createPrivateKey(config.appleMusicPrivateKey) : loadPrivateKey(config.appleMusicKeyPath);
+        if (key.asymmetricKeyType !== "ec" || !["prime256v1", "P-256"].includes(key.asymmetricKeyDetails?.namedCurve)) throw new Error("Invalid key.");
         const seconds = Math.floor(timestamp / 1000);
         const header = Buffer.from(JSON.stringify({ alg: "ES256", kid: config.appleMusicKeyId })).toString("base64url");
         const claims = { iss: config.appleMusicTeamId, iat: seconds - 30, exp: seconds + APPLE_TOKEN_LIFETIME_SECONDS };
+        if (config.appleMusicOrigins?.length) claims.origin = config.appleMusicOrigins;
         const payload = Buffer.from(JSON.stringify(claims)).toString("base64url");
         const signingInput = `${header}.${payload}`;
         const signature = sign("sha256", Buffer.from(signingInput), { key, dsaEncoding: "ieee-p1363" });

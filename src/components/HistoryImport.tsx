@@ -1,3 +1,5 @@
+import { IS_BROWSER_STORAGE } from "../lib/runtime-mode";
+import { apiFetch } from "../lib/browser-api";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Download, LoaderCircle, RefreshCw, X } from "lucide-react";
 import type { Language } from "../lib/i18n";
@@ -40,7 +42,7 @@ export function HistoryImport({language,onImported,autoApply=false,onStatus,onEr
     const timeout=setTimeout(()=>controller.abort(),15_000);
     setLoadingResults(true);
     try {
-      const response=await fetch("/api/history/netease/reports",{signal:controller.signal});
+      const response=await apiFetch("/api/history/netease/reports",{signal:controller.signal});
       const data=await response.json();
       if(!response.ok)throw Error(data.error?.code??"HISTORY_RESULTS_UNAVAILABLE");
       if(!mounted.current)return false;
@@ -77,7 +79,7 @@ export function HistoryImport({language,onImported,autoApply=false,onStatus,onEr
       controller.signal.addEventListener("abort",abort,{once:true});
       const timeout=setTimeout(abort,12_000);
       try{
-        const r=await fetch("/api/history/netease",{signal:request.signal});
+        const r=await apiFetch("/api/history/netease",{signal:request.signal});
         const data=await r.json(); if(stopped)return;
         if(!r.ok)throw Error(data.error?.code??"HISTORY_STATUS_UNAVAILABLE");
         if(!validJob(data.job))throw Error("HISTORY_STATUS_INVALID");
@@ -107,7 +109,7 @@ export function HistoryImport({language,onImported,autoApply=false,onStatus,onEr
     const controller=new AbortController();
     const timeout=setTimeout(()=>controller.abort(),15_000);
     try{
-      const r=await fetch("/api/history/netease",{method,headers:{"Content-Type":"application/json"},body:method==="POST"?"{}":undefined,signal:controller.signal});
+      const r=await apiFetch("/api/history/netease",{method,headers:{"Content-Type":"application/json"},body:method==="POST"?"{}":undefined,signal:controller.signal});
       const data=await r.json();if(!r.ok)throw Error(data.error?.code??"READ_FAILED");
       if(!validJob(data.job))throw Error("HISTORY_STATUS_INVALID");
       if(mounted.current){setJob(data.job);statusCallback.current?.(data.job);if(method==="POST"){applied.current="";applyOnCompletion.current=true;}}
@@ -119,7 +121,7 @@ export function HistoryImport({language,onImported,autoApply=false,onStatus,onEr
   };
   const state=job?.state;
   return <section className="history-import" aria-label={zh?"历史数据读取":"History import"}>
-    <div className="history-import-heading"><div><strong>{zh?"网易云 · 历史唱片架":"NetEase · Listening archive"}</strong><p className={active?"history-active-status":undefined} role={active?"status":undefined}>{active&&<LoaderCircle size={14} className="loading-spin" aria-hidden="true"/>}<span>{active?(job?.state==="discovering"?(zh?"正在查询历史年月目录…":"Discovering historical months…"):`${zh?"正在读取":"Reading"} ${job?.inFlight.join(" · ")||"…"}`):zh?"按账号历史目录逐月读取，成功结果在本机加密保存。":"Read every historical month and save successful results encrypted on this computer."}</span></p></div>
+    <div className="history-import-heading"><div><strong>{zh?"网易云 · 历史唱片架":"NetEase · Listening archive"}</strong><p className={active?"history-active-status":undefined} role={active?"status":undefined}>{active&&<LoaderCircle size={14} className="loading-spin" aria-hidden="true"/>}<span>{active?(job?.state==="discovering"?(zh?"正在查询历史年月目录…":"Discovering historical months…"):`${zh?"正在读取":"Reading"} ${job?.inFlight.join(" · ")||"…"}`):IS_BROWSER_STORAGE?(zh?"报告仅保存在此浏览器；关闭页面会暂停，回来后可继续读取。":"Reports stay in this browser. Closing the page pauses reading; return to continue."):(zh?"按账号历史目录逐月读取，成功结果在本机加密保存。":"Read every historical month and save successful results encrypted on this computer.")}</span></p></div>
     <button className="small-button" disabled={busy} onClick={()=>void act(active?"DELETE":"POST")}>{busy?<LoaderCircle size={15} className="loading-spin" aria-hidden="true"/>:active?<X size={15}/>:state&&state!=="idle"?<RefreshCw size={15}/>:<Download size={15}/>} {busy?(zh?"正在处理…":"Processing…"):active?(zh?"停止读取":"Stop"):(job?.failed?(zh?"继续并重试":"Continue / retry"):(zh?"读取全部历史":"Read all history"))}</button></div>
     {job&&(job.total>0||job.availableMonths.length>0)&&<><progress max={job.total||job.availableMonths.length} value={job.total?job.completed:job.availableMonths.length}/><div className="history-import-stats" role="status"><span>{job.total?`${job.completed} / ${job.total}`:job.availableMonths.length} {zh?"个月已处理":"months checked"}</span><span>{zh?`已取得 ${job.availableMonths.length} 个月 · ${job.failed} 个待重试`:`${job.availableMonths.length} retrieved · ${job.failed} to retry`}</span></div>
     {job.availableMonths.length>0&&<button className="text-button" disabled={loadingResults} onClick={()=>void readResults(job)}>{loadingResults?<LoaderCircle size={13} className="loading-spin"/>:null}{zh?"查看已读取的历史":"View retrieved history"}</button>}

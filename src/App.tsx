@@ -1,3 +1,4 @@
+import { apiFetch, savedBrowserReports, clearLocalReports } from "./lib/browser-api";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import {
@@ -25,7 +26,7 @@ import {
   type ReportInput,
 } from "./lib/report";
 import { copy, type Language } from "./lib/i18n";
-import { IS_UI_PREVIEW, UI_PREVIEW_LABEL, UI_PREVIEW_CONNECTION_REASON } from "./lib/runtime-mode";
+import { IS_BROWSER_STORAGE, IS_UI_PREVIEW, UI_PREVIEW_LABEL, UI_PREVIEW_CONNECTION_REASON } from "./lib/runtime-mode";
 import { Record } from "./components/Record";
 import { Modal } from "./components/Modal";
 import { Connections } from "./components/Connections";
@@ -215,6 +216,9 @@ function GenrePanel({
 }
 
 export default function App() {
+  const [hasSavedReports, setHasSavedReports] = useState(false);
+  const [viewingSaved, setViewingSaved] = useState(false);
+  useEffect(() => { if (IS_BROWSER_STORAGE) void savedBrowserReports().then(inputs => setHasSavedReports(inputs.length > 0)).catch(() => {}); }, []);
   const [language, setLanguage] = useState<Language>(() => {
     try {
       return localStorage.getItem("zmusicstats-language") === "en"
@@ -290,7 +294,7 @@ export default function App() {
   const closeModal = useCallback(() => setModal(null), []);
   const metadataSignature = useMemo(() => [...new Set(monthlyInputs.filter(input => input.mode === "live").flatMap(input => input.platforms.flatMap(platform => platform.tracks.map(track => `${platform.id}:${track.id}`))))].sort().join("|"), [monthlyInputs]);
   useEffect(() => {
-    if (IS_UI_PREVIEW || demo || syncing || awaitingHistory || historyActive) return;
+    if (IS_UI_PREVIEW || viewingSaved || demo || syncing || awaitingHistory || historyActive) return;
     if (!metadataSignature) {setMetadataProgress({done:0,total:0,state:"done"});setReportReady(true);return;}
     let cancelled = false; const controller = new AbortController();
     const pause=(milliseconds:number)=>new Promise<void>(resolve=>{
@@ -317,7 +321,7 @@ export default function App() {
         const batch=queue.slice(start,start+6);
         try {
           const load=async(requested=batch)=>{
-            const fetchBatch=()=>fetch("/api/metadata",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tracks:requested}),signal:AbortSignal.any([controller.signal,AbortSignal.timeout(25000)])});
+            const fetchBatch=()=>apiFetch("/api/metadata",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tracks:requested}),signal:AbortSignal.any([controller.signal,AbortSignal.timeout(25000)])});
             let response=await fetchBatch();
             for(let retry=0;response.status===429&&retry<12;retry++){
               await pause(5000);if(cancelled)return response;
@@ -358,7 +362,7 @@ export default function App() {
       }
     })();
     return()=>{cancelled=true;controller.abort();};
-  },[metadataSignature,demo,metadataRevision,syncing,awaitingHistory,historyActive]);
+  },[metadataSignature,demo,metadataRevision,syncing,awaitingHistory,historyActive,viewingSaved]);
   const retryMetadata = () => {setReportReady(false);setAllowPartial(false);metadataAttempted.current.clear();setMetadataRevision(revision=>revision+1);};
   const metadataStatus = metadataProgress.state === "loading" ? (language === "zh" ? `正在补全曲风与封面 · ${metadataProgress.done}/${metadataProgress.total} 首` : `Looking up genres and covers · ${metadataProgress.done}/${metadataProgress.total}`)
     : metadataProgress.state === "error" ? (language === "zh" ? "音乐资料读取暂时中断，可重新补全。已有报告仍可浏览。" : "Metadata lookup paused. Retry to continue; your report remains available.") : "";
@@ -426,7 +430,7 @@ export default function App() {
       // Show the local archive immediately while refreshing the connected sources.
       // Long selections should never sit on a demo report until their final month returns.
       try {
-        const archiveResponse = await fetch("/api/history/netease/reports", {signal:controller.signal});
+        const archiveResponse = await apiFetch("/api/history/netease/reports", {signal:controller.signal});
         if (archiveResponse.ok) {
           const archive = await archiveResponse.json();
           if (!active()) return;
@@ -447,7 +451,7 @@ export default function App() {
         if (!active()) return;
         setSyncProgress(`${language === "zh" ? "正在读取" : "Reading"} ${selectedMonth} · ${index + 1}/${requestedMonths.length}`);
         try {
-          const load = () => fetch(`/api/report?month=${encodeURIComponent(selectedMonth)}`, { signal: controller.signal });
+          const load = () => apiFetch(`/api/report?month=${encodeURIComponent(selectedMonth)}`, { signal: controller.signal });
           let response = await load();
           if (!active()) return;
           // Rate-limited months stay in the queue; cancelling stops both the wait and the request.
@@ -535,7 +539,7 @@ export default function App() {
     const timeout = setTimeout(() => controller.abort(), 10000);
     void (async () => {
       try {
-        const response = await fetch("/api/connections", { signal: controller.signal });
+        const response = await apiFetch("/api/connections", { signal: controller.signal });
         if (!response.ok || controller.signal.aborted || request !== liveRequest.current) return;
         const data = await response.json();
         if (controller.signal.aborted || request !== liveRequest.current) return;
@@ -612,6 +616,7 @@ export default function App() {
     if(finishInitialImport)void syncReport(orderedMonths);
   };
   const connectAndRead = async (provider?:PlatformId) => {
+    setViewingSaved(false);
     if (IS_UI_PREVIEW) return;
     if (provider) { setConnectedProviders(current => [...new Set([...current, provider])]); setEntry("report"); }
     cancelConnectionRead();
@@ -628,7 +633,7 @@ export default function App() {
       setAwaitingHistory(true);
       setMonthlyInputs(current=>current.some(input=>input.mode==="live")?current:[{mode:"live",period:monthlyInputs[0].period,expectedPlatforms:["netease"],platforms:[]}]);
       try {
-        const response=await fetch("/api/history/netease",{method:"POST",headers:{"Content-Type":"application/json"},body:"{}",signal:AbortSignal.any([controller.signal,AbortSignal.timeout(30000)])});
+        const response=await apiFetch("/api/history/netease",{method:"POST",headers:{"Content-Type":"application/json"},body:"{}",signal:AbortSignal.any([controller.signal,AbortSignal.timeout(30000)])});
         if(!active())return;
         if(!response.ok)throw await connectionResponseError(response,"HISTORY_DIRECTORY_UNAVAILABLE");
       } catch(error){if(active()){setAwaitingHistory(false);setIngestionError(connectionErrorMessage(error,language));}}
@@ -637,7 +642,7 @@ export default function App() {
     if(provider==="qq"){
       setAwaitingHistory(true);
       try {
-        const response=await fetch("/api/history/qq/months",{signal:AbortSignal.any([controller.signal,AbortSignal.timeout(45000)])});
+        const response=await apiFetch("/api/history/qq/months",{signal:AbortSignal.any([controller.signal,AbortSignal.timeout(45000)])});
         if(!active())return;
         if(!response.ok)throw await connectionResponseError(response,"HISTORY_DIRECTORY_UNAVAILABLE");
         const data=await response.json();
@@ -650,6 +655,7 @@ export default function App() {
     void syncReport();
   };
   const showDemo = () => {
+    setViewingSaved(false);
     setEntry("report");
     cancelConnectionRead();setConnectingProvider(undefined);
     setAwaitingHistory(false);setIngestionError("");setReportReady(true);setAllowPartial(false);
@@ -663,6 +669,15 @@ export default function App() {
     setMonthlyInputs([getDemoInput("2026-10")]);
     setReadIssues([]);
     setFilter("all");
+  };
+  const openSavedReports = async () => {
+    const inputs = await savedBrowserReports();
+    if (!inputs.length) { setHasSavedReports(false); return; }
+    cancelConnectionRead(); cancelRestoration(); liveRequest.current++; liveController.current?.abort();
+    setViewingSaved(true); setSyncing(false); setAwaitingHistory(false); setHistoryActive(false); setIngestionError("");
+    setMonthlyInputs(inputs); setHistoryInputs(inputs); setSelectedMonths(inputs.map(input => input.period.start.slice(0,7)));
+    setReadIssues([]); setReportReady(true); setAllowPartial(false); setMetadataProgress({done:0,total:0,state:"done"}); setEntry("report");
+    setToast(language === "zh" ? "正在查看保存在此浏览器的报告。" : "Viewing reports saved in this browser.");
   };
   const accountConnected = (provider?: PlatformId) => {
     if (IS_UI_PREVIEW) return;
@@ -746,7 +761,7 @@ export default function App() {
   const navigationVisible = entry === "report" && (!preparing || allowPartial);
 
   return (
-    <div className={`app-shell lang-${language}${entry === "report" && preparing && !allowPartial ? " is-report-preparing" : ""}`}>
+    <div className={`app-shell lang-${language}${entry === "connections" ? " is-welcome" : ""}${entry === "report" && preparing && !allowPartial ? " is-report-preparing" : ""}`}>
       <a className="skip-link" href="#main">{language === "zh" ? "跳到内容" : "Skip to content"}</a>
       {!navigationVisible && <header className="site-header">
         <a className="brand" href="#" onClick={event => { event.preventDefault(); window.scrollTo({top:0,behavior:window.matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth"}); }} aria-label="zmusicstats">
@@ -839,7 +854,8 @@ export default function App() {
         language={language} onClose={closeModal} onSync={accountConnected}
         syncing={syncing || awaitingHistory || historyActive || metadataProgress.state==="loading"} onDisconnected={disconnectPlatform}
       />
-      {entry === "connections" && <div className="welcome-demo">{connectedProviders.length > 0 && <button className="button primary" onClick={()=>setEntry("period")}>{language === "zh" ? "已连接，选择统计时段" : "Connected · choose a period"}</button>}<button className="text-button" onClick={showDemo}>{language === "zh" ? "先看看示例报告 ↗" : "Explore a sample report ↗"}</button></div>}
+      {entry === "connections" && <div className="welcome-demo">{hasSavedReports && <button className="small-button" onClick={()=>void openSavedReports()}>{language === "zh" ? "查看本机报告" : "View saved reports"}</button>}{connectedProviders.length > 0 && <button className="button primary" onClick={()=>setEntry("period")}>{language === "zh" ? "已连接，选择统计时段" : "Connected · choose a period"}</button>}<button className="text-button" onClick={showDemo}>{language === "zh" ? "先看看示例报告 ↗" : "Explore a sample report ↗"}</button></div>}
+      {entry === "connections" && <footer className="welcome-footer"><span>Created by Zach <small>© {new Date().getFullYear()} zmusicstats</small></span><div><button className="text-button" onClick={()=>setModal("privacy")}>{language === "zh" ? "隐私与数据" : "Privacy & data"}</button><a href="https://github.com/zzzachariah/zmusicstats" target="_blank" rel="noreferrer">GitHub</a><a href="https://github.com/zzzachariah/zmusicstats/issues" target="_blank" rel="noreferrer">Contact</a></div></footer>}
       <AnimatePresence>
         {modal === "months" && <MonthPicker language={language} selected={selectedMonths} demo={demo} onClose={closeModal} onApply={changeMonths} />}
         {modal === "poster" && (
@@ -850,7 +866,7 @@ export default function App() {
             onToast={setToast}
           />
         )}
-        {modal === "privacy" && <Modal title={language === "zh" ? "隐私与数据" : "Privacy & data"} closeLabel={t.close} onClose={closeModal}><div className="info-content"><p>{language === "zh" ? "音乐账号的授权用于读取你选择的听歌资料。请只连接你自己的账号，并在管理连接中查看读取范围或断开连接。" : "Account authorization is used to read the listening data you select. Connect only your own accounts; review reading status or disconnect in Manage connections."}</p><p>{language === "zh" ? "画像与时间比喻在本地规则中生成，不会把听歌记录发送给 AI 服务。导出的海报会包含你勾选的歌曲与统计信息，分享前可以自行取舍。" : "Listening portraits and time comparisons use local rules. Your listening records are not sent to an AI service. Exported posters contain only the modules you select, so review your choices before sharing."}</p><p>{language === "zh" ? "部分平台只提供月榜样本；估算时长标有 ≈，不能视为全部播放历史。" : "Some platforms provide monthly ranking samples only. Estimated time is marked ≈ and does not represent a complete playback history."}</p></div></Modal>}
+        {modal === "privacy" && <Modal title={language === "zh" ? "隐私与数据" : "Privacy & data"} closeLabel={t.close} onClose={closeModal}><div className="info-content">{IS_BROWSER_STORAGE && <><p>{language === "zh" ? "听歌报告保存在此浏览器中，分析和海报导出在设备上完成。读取数据时会经过中转服务；云端仅短期加密保存登录状态和扫码信息，不长期保存听歌报告。登录会话最多保留 12 小时，过期后重新连接即可。" : "Reports stay in this browser; analysis and poster export run on your device. Requests pass through our relay, which temporarily stores encrypted login and QR state, not listening reports. Login sessions expire after 12 hours."}</p><button className="small-button" onClick={()=>void clearLocalReports().then(()=>{setHasSavedReports(false);setToast(language === "zh" ? "已清除本机保存的报告。" : "Saved reports cleared.");})}>{language === "zh" ? "清除本机保存的报告" : "Clear saved reports"}</button></>}<p>{language === "zh" ? "音乐账号的授权用于读取你选择的听歌资料。请只连接你自己的账号，并在管理连接中查看读取范围或断开连接。" : "Account authorization is used to read the listening data you select. Connect only your own accounts; review reading status or disconnect in Manage connections."}</p><p>{language === "zh" ? "画像与时间比喻在本地规则中生成，不会把听歌记录发送给 AI 服务。导出的海报会包含你勾选的歌曲与统计信息，分享前可以自行取舍。" : "Listening portraits and time comparisons use local rules. Your listening records are not sent to an AI service. Exported posters contain only the modules you select, so review your choices before sharing."}</p><p>{language === "zh" ? "部分平台只提供月榜样本；估算时长标有 ≈，不能视为全部播放历史。" : "Some platforms provide monthly ranking samples only. Estimated time is marked ≈ and does not represent a complete playback history."}</p></div></Modal>}
         {modal === "info" && (
           <Modal title={t.sourceInfo} closeLabel={t.close} onClose={closeModal}>
             <div className="info-content">

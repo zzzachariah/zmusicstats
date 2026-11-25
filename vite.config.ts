@@ -3,7 +3,7 @@ import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [react()],
-  define: { __ZMUSICSTATS_UI_PREVIEW__: JSON.stringify(process.env.ZMUSICSTATS_UI_PREVIEW === "true") },
+  define: { __ZMUSICSTATS_UI_PREVIEW__: JSON.stringify(process.env.ZMUSICSTATS_UI_PREVIEW === "true"), __ZMUSICSTATS_LOCAL_REPORTS__: JSON.stringify(process.env.ZMUSICSTATS_CLOUD === "true") },
   server: {
     port: 5173,
     strictPort: true,

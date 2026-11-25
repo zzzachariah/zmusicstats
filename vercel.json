@@ -1,7 +1,21 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "vite",
-  "buildCommand": "ZMUSICSTATS_UI_PREVIEW=true npm run build",
+  "buildCommand": "ZMUSICSTATS_CLOUD=true npm run build",
   "outputDirectory": "dist",
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "regions": [
+    "hkg1"
+  ],
+  "functions": {
+    "api/[...path].mjs": {
+      "maxDuration": 300,
+      "includeFiles": "{server/**,node_modules/@neteasecloudmusicapienhanced/api/**}"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
+    }
+  ]
 }

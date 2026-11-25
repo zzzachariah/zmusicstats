@@ -427,18 +427,20 @@ export function createAdapters(config, fetchImpl = fetch) {
         return appleDeveloperTokenUsable(appleDeveloper.getToken());
       },
     },
-    async account(provider, credential) {
+    async account(provider, credential, { includeSubject = false } = {}) {
       // Profile loading is optional and has its own short deadline; 803 already completed login.
       const options = { timeoutMs: Math.min(config.timeoutMs ?? 12_000, 2500) };
       if (provider === "apple") return { nickname: "Apple Music 账号" };
       if (credential.kind !== "gateway") return null;
       if (provider === "netease") {
         const payload = await ncm("/user/account", {}, credential.secret, options);
-        return publicAccount(payload.profile ?? payload.data?.profile);
+        const profile = payload.profile ?? payload.data?.profile;
+        return { ...publicAccount(profile), ...(includeSubject && profile?.userId ? { subject: String(profile.userId) } : {}) };
       }
       const payload = await qq("/login/status", {}, credential.secret, options);
       const profile = payload.data?.profile;
-      return publicAccount({ nickname: profile?.nickname ?? profile?.nick, avatarUrl: profile?.avatarUrl });
+      return { ...publicAccount({ nickname: profile?.nickname ?? profile?.nick, avatarUrl: profile?.avatarUrl }),
+        ...(includeSubject && (profile?.musicid ?? profile?.uin) ? { subject: String(profile.musicid ?? profile.uin) } : {}) };
     },
     async appleConfig() {
       const developerToken = appleDeveloper.getToken();
@@ -504,7 +506,7 @@ export function createAdapters(config, fetchImpl = fetch) {
           ? await ncm("/login/qr/key")
           : await qq("/login/qr/key", { channel: config.qqChannel ?? "qq" });
       const key = keyPayload?.data?.unikey;
-      if (typeof key !== "string" || key.length > 1024)
+      if (typeof key !== "string" || key.length > (provider === "qq" ? 65_536 : 1024))
         throw new ApiError(502, "QR_UNAVAILABLE", "暂时无法生成登录二维码。");
       const payload =
         provider === "netease"
