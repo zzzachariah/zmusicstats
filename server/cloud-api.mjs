@@ -20,7 +20,7 @@ export function createCloudApi({ env = process.env, store, adapters, artwork, wa
   adapters ??= createAdapters({ neteaseBase: "https://netease.internal", qqBase: "https://qq.internal", qqChannel: "qqmusic", timeoutMs: 35_000,
     metadataCachePath: null, appleMusicPrivateKey: env.APPLE_MUSIC_PRIVATE_KEY, appleMusicTeamId: env.APPLE_MUSIC_TEAM_ID,
     appleMusicKeyId: env.APPLE_MUSIC_KEY_ID, appleMusicOrigins: [...origins].filter(value => value.startsWith("https://")),
-    appleAppName: "zmusicstats", appleDeveloperToken: env.APPLE_MUSIC_DEVELOPER_TOKEN,
+    appleAppName: "zmusicstats", appleMusicRequestOrigin: "https://zmusicstats.vercel.app", appleDeveloperToken: env.APPLE_MUSIC_DEVELOPER_TOKEN,
   }, gatewayFetch({ relay, qqSecret: env.QQ_SESSION_SECRET }));
   artwork ??= createArtworkProxy({ now });
   async function limit(key, max, windowMs = 60_000) {

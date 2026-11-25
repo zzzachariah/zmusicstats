@@ -139,3 +139,12 @@ test("API reload reads current automatic-signing settings instead of stale inher
   assert.equal(cleared.appleMusicTeamId, null);
   assert.equal(cleared.appleMusicKeyId, null);
 });
+
+test('cloud PEM credentials sign an origin-bound token without a private key file', t => {
+  const { pem, publicKey, config } = fixture(t);
+  const provider = createAppleDeveloperTokenProvider({ ...config, appleMusicKeyPath: null, appleMusicPrivateKey: pem, appleMusicOrigins: ['https://zmusicstats.vercel.app'] }, { now: () => initialTime });
+  const token = provider.getToken(), decoded = decode(token);
+  assert.deepEqual(decoded.claims.origin, ['https://zmusicstats.vercel.app']);
+  assert.equal(verify('sha256', Buffer.from(decoded.input), { key: publicKey, dsaEncoding: 'ieee-p1363' }, decoded.signature), true);
+  assert.ok(!token.includes('PRIVATE KEY'));
+});

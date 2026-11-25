@@ -563,6 +563,7 @@ export default function App() {
   }, []);
   const changeMonths = (values: string[]) => {
     if (!values.length) return;
+    if (viewingSaved) { setSelectedMonths(values); setModal(null); return; }
     cancelConnectionRead();setAwaitingHistory(false);setConnectingProvider(undefined);
     cancelRestoration();
     if (demo) {
@@ -735,7 +736,7 @@ export default function App() {
   useReportSlides(entry === "report" && (!preparing || allowPartial) && modal === null);
   const preparationError = ingestionError || (!syncing&&!awaitingHistory&&metadataProgress.state==="error" ? (language==="zh" ? "部分歌曲资料未读取完成，请重试后再查看完整报告。 (METADATA_INCOMPLETE)" : "Some song metadata is incomplete. Retry before viewing the full report. (METADATA_INCOMPLETE)") : "");
 
-  const historyContent = IS_UI_PREVIEW ? <p className="scope-note">{UI_PREVIEW_CONNECTION_REASON[language]}</p> : <>
+  const historyContent = viewingSaved ? <p className="scope-note">{language === "zh" ? "正在查看本机保存的报告；重新连接平台后可以继续读取。" : "Viewing saved reports. Reconnect a platform to read more."}</p> : IS_UI_PREVIEW ? <p className="scope-note">{UI_PREVIEW_CONNECTION_REASON[language]}</p> : <>
     {demo ? <p className="scope-note">{language === "zh" ? "连接音乐账号后，这里会显示历史读取进度与各月份状态。" : "Connect an account to see reading progress and monthly availability here."}</p> : <>
       <ReadStatus language={language} inputs={monthlyInputs} months={selectedMonths} issues={readIssues} diagnostics={diagnostics}
         syncing={syncing} syncProgress={syncProgress} syncDone={syncCounts.done} syncTotal={syncCounts.total} metadataProgress={metadataProgress}

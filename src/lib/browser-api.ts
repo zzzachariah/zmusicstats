@@ -112,7 +112,7 @@ export function createBrowserApi({ store, nativeFetch = fetch, now = Date.now }:
       job.finishedAt = now(); await save().catch(() => {});
     }
   }
-  return async function apiFetch(input: string, init?: RequestInit): Promise<Response> {
+  const apiFetch = async (input: string, init?: RequestInit): Promise<Response> => {
     try {
       const url = new URL(input, "https://local.invalid"), method = init?.method ?? "GET";
       if (url.pathname === "/api/report") return await readReport(url, init);
@@ -133,11 +133,13 @@ export function createBrowserApi({ store, nativeFetch = fetch, now = Date.now }:
         return json({ job: summarize() });
       }
       if (url.pathname === "/api/metadata" && method === "POST") {
+        const revision = generation;
         const { tracks } = JSON.parse(String(init?.body)), items = [], missing = [];
         for (const track of tracks) { const cached = await store.get<{ complete?: boolean }>(`metadata:${track.provider}:${track.id}`); if (cached?.complete) items.push(cached); else missing.push(track); }
         if (missing.length) {
           const response = await nativeFetch(input, { ...init, body: JSON.stringify({ tracks: missing }) }); if (!response.ok) return response;
           const data = await response.json();
+          if (revision !== generation || init?.signal?.aborted) throw Error("CONNECTION_CHANGED");
           for (const item of data.items ?? []) { if (!missing.some(t => t.provider === item.provider && t.id === item.id)) continue; await store.set(`metadata:${item.provider}:${item.id}`, item); items.push(item); }
         }
         return json({ items });
@@ -159,10 +161,11 @@ export function createBrowserApi({ store, nativeFetch = fetch, now = Date.now }:
       return json({ error: { code, message: code === "BROWSER_STORAGE_UNAVAILABLE" ? "浏览器无法保存报告，请检查隐私模式或存储空间后重试。" : "本次读取尚未完成，请重试。" } }, code === "CONNECTION_EXPIRED" ? 401 : 503);
     }
   };
+  return Object.assign(apiFetch, { clear: async () => { generation++; controller?.abort(); job = blankJob(); jobScope = ""; await store.clear(); } });
 }
 
 const browserStore = indexedStore();
-export const clearLocalReports = () => browserStore.clear();
+export const clearLocalReports = () => localFetch.clear();
 export async function savedBrowserReports(): Promise<ReportInput[]> {
   const profiles = await browserStore.get<Provider[]>("settings:last-providers") ?? [];
   const byMonth = new Map<string, ReportInput>();

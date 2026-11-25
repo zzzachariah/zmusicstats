@@ -7,7 +7,7 @@ const connect = (url, protocol, handlers) => new Promise((resolve, reject) => {
   const socket = new WebSocket(url, protocol, { handshakeTimeout: 12_000 });
   socket.on("message", data => handlers.message(data));
   socket.on("close", () => handlers.close());
-  socket.on("error", error => { handlers.error(error); reject(new Error("MQTT connection failed")); });
+  socket.on("error", error => { console.warn("qq-relay-socket", { code: /^[A-Z_]+$/.test(error.code ?? "") ? error.code : undefined, httpStatus: error.message?.match(/^Unexpected server response: (\d{3})$/)?.[1] }); handlers.error(error); reject(new Error("MQTT connection failed")); });
   socket.once("open", () => resolve({ send: data => socket.send(data), close: () => socket.close() }));
 });
 
@@ -23,6 +23,7 @@ export function createQqRelay({ store, waitUntil, listen = createMqttListenOver(
     async open(id, image, ttlMs) {
       const owner = randomBytes(16).toString("hex"), expiresAt = now() + Math.min(ttlMs, 185_000);
       const record = await store.update(key(id), current => current ? undefined : { owner, image, expiresAt, heartbeat: now(), state: "opening", events: [] });
+      console.info("qq-relay-stage", { stage: "stored" });
       if (record.owner !== owner) { if (record.state !== "ready") throw unavailable(); return; }
       let writes = Promise.resolve(), failed = false;
       const listener = listen(id, event => {
@@ -32,6 +33,7 @@ export function createQqRelay({ store, waitUntil, listen = createMqttListenOver(
           current.events.push(event); current.heartbeat = now(); return current;
         })).catch(() => { failed = true; listener.close(); });
       }, Math.max(1, expiresAt - now()));
+      console.info("qq-relay-stage", { stage: "listener-created" });
       // Always register the finite listener lifetime with the hosting runtime, before returning a QR.
       let interval;
       const lifetime = (async () => {
@@ -44,7 +46,7 @@ export function createQqRelay({ store, waitUntil, listen = createMqttListenOver(
             })).catch(() => { failed = true; listener.close(); });
           }, 15_000);
           await listener.done;
-        } catch { failed = true; }
+        } catch (error) { failed = true; console.warn("qq-relay-stage", { stage: "listener-failed", reason: ["MQTT connection failed", "MQTT handshake timeout", "MQTT WebSocket error", "MQTT WebSocket closed", "MQTT packet timeout"].includes(error?.message) ? error.message : "protocol-error" }); }
         finally {
           clearInterval(interval); listener.close(); await writes;
           await store.update(key(id), current => {
@@ -54,8 +56,10 @@ export function createQqRelay({ store, waitUntil, listen = createMqttListenOver(
         }
       })();
       waitUntil(lifetime);
+      console.info("qq-relay-stage", { stage: "lifetime-registered" });
       try {
         await listener.ready;
+        console.info("qq-relay-stage", { stage: "subscribed" });
         await store.update(key(id), current => {
           if (!current || current.owner !== owner || failed) throw unavailable();
           current.state = "ready"; current.heartbeat = now(); return current;

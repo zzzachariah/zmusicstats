@@ -352,6 +352,7 @@ export function createAdapters(config, fetchImpl = fetch) {
       allowEmpty,
       headers: {
         Authorization: `Bearer ${developerToken}`,
+        ...(config.appleMusicRequestOrigin ? { Origin: config.appleMusicRequestOrigin } : {}),
         ...(musicUserToken ? { "Music-User-Token": musicUserToken } : {}),
       },
     });
@@ -369,7 +370,7 @@ export function createAdapters(config, fetchImpl = fetch) {
       if (!appleDeveloperTokenUsable(token)) throw new ApiError(503, "APPLE_NOT_CONFIGURED", "目录查询暂不可用。");
       return request(appleBase, "/v1/catalog/cn/search", {
         params: { term: `${track.title} ${track.artist}`, types: "songs", limit: 10 },
-        headers: { Authorization: `Bearer ${token}` }, signal, timeoutMs: 4500,
+        headers: { Authorization: `Bearer ${token}`, ...(config.appleMusicRequestOrigin ? { Origin: config.appleMusicRequestOrigin } : {}) }, signal, timeoutMs: 4500,
       });
     },
   });
