@@ -500,6 +500,9 @@ export function createAdapters(config, fetchImpl = fetch) {
         account: { nickname: "Apple Music 账号" },
       };
     },
+    async cancelQr(provider, key) {
+      if (provider === "qq" && key) await qq("/login/qr/cancel", { key });
+    },
     async createQr(provider) {
       const createdAt = Date.now();
       const keyPayload =

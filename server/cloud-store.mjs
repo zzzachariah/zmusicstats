@@ -1,5 +1,5 @@
 import { createCipheriv, createDecipheriv, createHmac, randomBytes } from "node:crypto";
-import { get, put } from "@vercel/blob";
+import { get, put, BlobPreconditionFailedError, BlobServiceRateLimited } from "@vercel/blob";
 import { ApiError } from "./adapters.mjs";
 
 // Only short-lived login sessions and QR events are stored here. Never reports.
@@ -20,7 +20,9 @@ export function createTransientStore({ secret, namespace = "production", sdk = {
     try { return JSON.parse(bytes.toString()); } finally { bytes.fill(0); }
   };
   async function read(id) {
-    const response = await sdk.get(pathFor(id), { access: "private", useCache: false });
+    // Compressed responses carry W/ weak ETags, which cannot be used with If-Match.
+    // Identity encoding keeps the bytes and strong ETag from the same consistent read.
+    const response = await sdk.get(pathFor(id), { access: "private", useCache: false, headers: { "Accept-Encoding": "identity" } });
     if (!response || response.statusCode !== 200) return { value: null, etag: null };
     const value = decode(id, await new Response(response.stream).json());
     return { value: value.expiresAt > now() ? value : null, etag: response.blob.etag };
@@ -35,9 +37,9 @@ export function createTransientStore({ secret, namespace = "production", sdk = {
           allowOverwrite: !!etag, ...(etag ? { ifMatch: etag } : {}), contentType: "application/json", ttlDays: 1 });
         return next;
       } catch (error) {
-        console.warn("login-store-write", { name: error?.name, reason: /rate|too many/i.test(error?.message ?? "") ? "rate-limit" : /etag|match|precondition/i.test(error?.message ?? "") ? "etag-conflict" : /already exists/i.test(error?.message ?? "") ? "already-exists" : /overwrite/i.test(error?.message ?? "") ? "overwrite" : "storage-error" });
-        if (/RateLimited/.test(error?.name ?? "") || /too many|once per|once every/i.test(error?.message ?? "")) { await new Promise(resolve => setTimeout(resolve, 1100 + attempt * 200)); continue; }
-        if (!/Precondition|AlreadyExists|Conflict/.test(error?.name ?? "") && !/already exists/i.test(error?.message ?? "")) throw error;
+        if (error instanceof BlobServiceRateLimited || /RateLimited/.test(error?.name ?? "") || /too many|once per|once every/i.test(error?.message ?? "")) { await new Promise(resolve => setTimeout(resolve, 1100 + attempt * 200)); continue; }
+        // The SDK's subclasses keep Error.name === "Error"; use their actual class.
+        if (!(error instanceof BlobPreconditionFailedError) && !/Precondition|AlreadyExists|Conflict/.test(error?.name ?? "") && !/already exists/i.test(error?.message ?? "")) throw error;
       }
     }
     throw new ApiError(409, "SESSION_BUSY", "账号状态正在更新，请稍后重试。");

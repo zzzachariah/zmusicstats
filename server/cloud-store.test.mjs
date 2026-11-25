@@ -2,11 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
 import { createTransientStore } from './cloud-store.mjs';
+import { BlobPreconditionFailedError } from '@vercel/blob';
 function memoryBlob(){
  const rows=new Map();let sequence=0;
  return { rows, sdk: {
- async get(path){const item=rows.get(path);return item?{statusCode:200,stream:new Response(item.body).body,blob:{etag:item.etag}}:null;},
- async put(path,body,options){const old=rows.get(path);if((old&&!options.allowOverwrite)||(options.ifMatch&&old?.etag!==options.ifMatch))throw Object.assign(new Error(),{name:'BlobPreconditionFailedError'});const etag=String(++sequence);rows.set(path,{body,etag,options});return{etag};}
+ async get(path,options){assert.equal(options.headers['Accept-Encoding'],'identity');assert.equal(options.useCache,false);const item=rows.get(path);return item?{statusCode:200,stream:new Response(item.body).body,blob:{etag:item.etag}}:null;},
+ async put(path,body,options){const old=rows.get(path);if((old&&!options.allowOverwrite)||(options.ifMatch&&old?.etag!==options.ifMatch))throw new BlobPreconditionFailedError();const etag=String(++sequence);rows.set(path,{body,etag,options});return{etag};}
  }};
 }
 test('cloud login records are encrypted, bound to their path, expire and retry concurrent updates',async()=>{

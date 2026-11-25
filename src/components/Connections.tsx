@@ -9,7 +9,7 @@ import type { PlatformId } from "../lib/report";
 import { prepareAppleMusic, connectAppleMusic } from "../lib/apple-music";
 import { connectionErrorMessage, connectionResponseError } from "../lib/connection-errors";
 import { canOpenMobileAuth, readQQMobileAuth, type MobileAuth } from "../lib/mobile-auth";
-import { IS_UI_PREVIEW, UI_PREVIEW_LABEL, UI_PREVIEW_CONNECTION_REASON } from "../lib/runtime-mode";
+import { IS_BROWSER_STORAGE, IS_UI_PREVIEW, UI_PREVIEW_LABEL, UI_PREVIEW_CONNECTION_REASON } from "../lib/runtime-mode";
 import "./connections.css";
 
 type Provider = {
@@ -151,6 +151,13 @@ function LiveConnections({
     void refresh(controller.signal);
     return () => controller.abort();
   }, [open, refresh]);
+
+  useEffect(() => {
+    if (!IS_BROWSER_STORAGE || open || !qr || qr.state === "connected") return;
+    const id = qr.id, provider = qr.provider;
+    actionSequence.current++; actionController.current?.abort();
+    void apiFetch(`/api/auth/${provider}/qr/${encodeURIComponent(id)}`, { method: "DELETE", keepalive: true }).finally(() => setQr(current => current?.id === id ? null : current));
+  }, [open, qr]);
 
   const appleConfigured = providers.some(provider => provider.id === "apple" && provider.configured);
   useEffect(() => {

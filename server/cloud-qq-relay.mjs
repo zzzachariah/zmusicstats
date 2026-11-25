@@ -23,7 +23,6 @@ export function createQqRelay({ store, waitUntil, listen = createMqttListenOver(
     async open(id, image, ttlMs) {
       const owner = randomBytes(16).toString("hex"), expiresAt = now() + Math.min(ttlMs, 185_000);
       const record = await store.update(key(id), current => current ? undefined : { owner, image, expiresAt, heartbeat: now(), state: "opening", events: [] });
-      console.info("qq-relay-stage", { stage: "stored", remainingMs: expiresAt - now() });
       if (record.owner !== owner) { if (record.state !== "ready") throw unavailable(); return; }
       let writes = Promise.resolve(), failed = false;
       const listener = listen(id, event => {
@@ -33,7 +32,6 @@ export function createQqRelay({ store, waitUntil, listen = createMqttListenOver(
           current.events.push(event); current.heartbeat = now(); return current;
         })).catch(() => { failed = true; listener.close(); });
       }, Math.max(1, expiresAt - now()));
-      console.info("qq-relay-stage", { stage: "listener-created" });
       // Always register the finite listener lifetime with the hosting runtime, before returning a QR.
       let interval;
       const lifetime = (async () => {
@@ -56,12 +54,9 @@ export function createQqRelay({ store, waitUntil, listen = createMqttListenOver(
         }
       })();
       waitUntil(lifetime);
-      console.info("qq-relay-stage", { stage: "lifetime-registered" });
       try {
         await listener.ready;
-        console.info("qq-relay-stage", { stage: "subscribed" });
         await store.update(key(id), current => {
-          console.info("qq-relay-stage", { stage: "ready-state", found: !!current, sameOwner: current?.owner === owner, failed });
           if (!current || current.owner !== owner || failed) throw unavailable();
           current.state = "ready"; current.heartbeat = now(); return current;
         });

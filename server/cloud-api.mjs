@@ -84,6 +84,7 @@ export function createCloudApi({ env = process.env, store, adapters, artwork, wa
         const provider = qrRoute[1]; await limit(`${id}:qr`, 8, 10 * 60_000);
         const qrId = opaque();
         await store.update(sessionKey, current => { assertSession(current); current.qrs[provider] = { id: qrId, expiresAt: now() + 180_000 }; return current; });
+        if (session.qrs[provider]?.key) await adapters.cancelQr?.(provider, session.qrs[provider].key).catch(() => {});
         const upstream = await adapters.createQr(provider);
         const expiresAt = Math.min(now() + 180_000, upstream.expiresAt ?? Infinity);
         await store.update(sessionKey, current => {
@@ -91,6 +92,15 @@ export function createCloudApi({ env = process.env, store, adapters, artwork, wa
           current.qrs[provider] = { id: qrId, key: upstream.key, expiresAt }; return current;
         });
         return reply({ id: qrId, provider, qrImage: upstream.qrImage, expiresAt, ...(upstream.mobileAuth ? { mobileAuth: { ...upstream.mobileAuth, expiresAt } } : {}) });
+      }
+      if (qrRoute && method === "DELETE" && validId(qrRoute[2])) {
+        const provider = qrRoute[1], old = session.qrs[provider];
+        await store.update(sessionKey, current => {
+          if (assertSession(current).qrs[provider]?.id !== qrRoute[2]) return undefined;
+          delete current.qrs[provider]; return current;
+        });
+        if (old?.id === qrRoute[2] && old.key) await adapters.cancelQr?.(provider, old.key).catch(() => {});
+        return reply({ provider, state: "cancelled" });
       }
       if (qrRoute && method === "GET" && validId(qrRoute[2])) {
         const provider = qrRoute[1], qr = session.qrs[provider];
@@ -128,6 +138,7 @@ export function createCloudApi({ env = process.env, store, adapters, artwork, wa
         await store.update(sessionKey, current => {
           assertSession(current); delete current.connections[disconnect[1]]; delete current.qrs[disconnect[1]]; current.revision++; return current;
         });
+        if (session.qrs[disconnect[1]]?.key) await adapters.cancelQr?.(disconnect[1], session.qrs[disconnect[1]].key).catch(() => {});
         return reply({ provider: disconnect[1], connected: false });
       }
       const directory = url.pathname.match(/^\/api\/history\/(netease|qq)\/months$/);
